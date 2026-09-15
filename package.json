@@ -1,0 +1,11 @@
+{
+  "name": "shipnow-api",
+  "version": "1.0.0",
+  "description": "ShipNow backend API",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  }
+}
