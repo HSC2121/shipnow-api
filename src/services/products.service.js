@@ -44,13 +44,12 @@ export class ProductsService {
 
     return await productsRepository.create({
       ...productData,
-      status
+      status,
     });
   }
 
   async updateProduct(id, updateData) {
-    const existingProduct =
-      await productsRepository.findById(id);
+    const existingProduct = await productsRepository.findById(id);
 
     if (!existingProduct) {
       const error = new Error("Product not found");
@@ -77,9 +76,6 @@ export class ProductsService {
           : PRODUCT_STATUS.OUT_OF_STOCK;
     }
 
-    return await productsRepository.updateById(
-      id,
-      updateData
-    );
+    return await productsRepository.updateById(id, updateData);
   }
 }
