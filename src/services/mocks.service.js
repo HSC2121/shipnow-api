@@ -6,6 +6,8 @@ import {
   ORDER_PRIORITY,
   DELIVERY_STATUS
 } from "../constants/index.js";
+import { AppError } from "../errors/app.error.js";
+import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
 
 const mocksRepository = new MocksRepository();
 
@@ -18,11 +20,9 @@ export class MocksService {
       quantity < 1 ||
       quantity > 100
     ) {
-      const error = new Error(
-        "Quantity must be an integer between 1 and 100"
+      throw new AppError(
+        ERROR_DICTIONARY.INVALID_MOCK_QUANTITY
       );
-      error.statusCode = 400;
-      throw error;
     }
 
     return quantity;
@@ -82,41 +82,45 @@ export class MocksService {
   async seedData(qty = 10) {
     const quantity = this.validateQuantity(qty);
 
-    // Generate and save users
-    const users = this.generateUsers(quantity);
-    const savedUsers = await mocksRepository.insertUsers(users);
+    try {
+      const users = this.generateUsers(quantity);
+      const savedUsers = await mocksRepository.insertUsers(users);
 
-    // Generate and save drivers
-    const drivers = this.generateDrivers(quantity);
-    const savedDrivers = await mocksRepository.insertDrivers(drivers);
+      const drivers = this.generateDrivers(quantity);
+      const savedDrivers =
+        await mocksRepository.insertDrivers(drivers);
 
-    // Generate orders linked to real users
-    const orders = this.generateOrders(quantity).map((order) => ({
-      ...order,
-      user: faker.helpers.arrayElement(savedUsers)._id
-    }));
+      const orders = this.generateOrders(quantity).map((order) => ({
+        ...order,
+        user: faker.helpers.arrayElement(savedUsers)._id
+      }));
 
-    const savedOrders = await mocksRepository.insertOrders(orders);
+      const savedOrders =
+        await mocksRepository.insertOrders(orders);
 
-    // Generate one delivery for each saved order
-    const deliveries = this.generateDeliveries(quantity).map(
-      (delivery, index) => ({
-        ...delivery,
-        order: savedOrders[index]._id,
-        driver: faker.helpers.arrayElement(savedDrivers)._id
-      })
-    );
+      const deliveries = this.generateDeliveries(quantity).map(
+        (delivery, index) => ({
+          ...delivery,
+          order: savedOrders[index]._id,
+          driver: faker.helpers.arrayElement(savedDrivers)._id
+        })
+      );
 
-    const savedDeliveries =
-      await mocksRepository.insertDeliveries(deliveries);
+      const savedDeliveries =
+        await mocksRepository.insertDeliveries(deliveries);
 
-    return {
-      inserted: {
-        users: savedUsers.length,
-        drivers: savedDrivers.length,
-        orders: savedOrders.length,
-        deliveries: savedDeliveries.length
-      }
-    };
+      return {
+        inserted: {
+          users: savedUsers.length,
+          drivers: savedDrivers.length,
+          orders: savedOrders.length,
+          deliveries: savedDeliveries.length
+        }
+      };
+    } catch (error) {
+      throw new AppError(
+        ERROR_DICTIONARY.MOCK_SEED_FAILED
+      );
+    }
   }
 }

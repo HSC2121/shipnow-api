@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
 import { UsersRepository } from "../repositories/users.repository.js";
+import { AppError } from "../errors/app.error.js";
+import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
 
 const usersRepository = new UsersRepository();
 
@@ -8,29 +11,29 @@ export class UsersService {
   }
 
   async getUserById(id) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError(ERROR_DICTIONARY.INVALID_ID);
+    }
+
     const user = await usersRepository.findById(id);
 
     if (!user) {
-      const error = new Error("User not found");
-      error.statusCode = 404;
-      throw error;
+      throw new AppError(ERROR_DICTIONARY.USER_NOT_FOUND);
     }
 
     return user;
   }
 
   async createUser(userData) {
-    const normalizedEmail = userData.email
-      .trim()
-      .toLowerCase();
+    const normalizedEmail = userData.email.trim().toLowerCase();
 
     const existingUser =
       await usersRepository.findByEmail(normalizedEmail);
 
     if (existingUser) {
-      const error = new Error("Email already registered");
-      error.statusCode = 409;
-      throw error;
+      throw new AppError(
+        ERROR_DICTIONARY.EMAIL_ALREADY_REGISTERED
+      );
     }
 
     return await usersRepository.create({
@@ -40,19 +43,18 @@ export class UsersService {
   }
 
   async updateUser(id, updateData) {
-    const existingUser =
-      await usersRepository.findById(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError(ERROR_DICTIONARY.INVALID_ID);
+    }
+
+    const existingUser = await usersRepository.findById(id);
 
     if (!existingUser) {
-      const error = new Error("User not found");
-      error.statusCode = 404;
-      throw error;
+      throw new AppError(ERROR_DICTIONARY.USER_NOT_FOUND);
     }
 
     if (updateData.email !== undefined) {
-      const normalizedEmail = updateData.email
-        .trim()
-        .toLowerCase();
+      const normalizedEmail = updateData.email.trim().toLowerCase();
 
       const userWithEmail =
         await usersRepository.findByEmail(normalizedEmail);
@@ -61,17 +63,14 @@ export class UsersService {
         userWithEmail &&
         userWithEmail._id.toString() !== id
       ) {
-        const error = new Error("Email already registered");
-        error.statusCode = 409;
-        throw error;
+        throw new AppError(
+          ERROR_DICTIONARY.EMAIL_ALREADY_REGISTERED
+        );
       }
 
       updateData.email = normalizedEmail;
     }
 
-    return await usersRepository.updateById(
-      id,
-      updateData
-    );
+    return await usersRepository.updateById(id, updateData);
   }
 }

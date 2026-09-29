@@ -1,5 +1,8 @@
+import mongoose from "mongoose";
 import { ProductsRepository } from "../repositories/products.repository.js";
 import { PRODUCT_STATUS } from "../constants/index.js";
+import { AppError } from "../errors/app.error.js";
+import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
 
 const productsRepository = new ProductsRepository();
 
@@ -13,12 +16,14 @@ export class ProductsService {
   }
 
   async getProductById(id) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError(ERROR_DICTIONARY.INVALID_ID);
+    }
+
     const product = await productsRepository.findById(id);
 
     if (!product) {
-      const error = new Error("Product not found");
-      error.statusCode = 404;
-      throw error;
+      throw new AppError(ERROR_DICTIONARY.PRODUCT_NOT_FOUND);
     }
 
     return product;
@@ -26,15 +31,11 @@ export class ProductsService {
 
   async createProduct(productData) {
     if (productData.price < 0) {
-      const error = new Error("Price cannot be negative");
-      error.statusCode = 400;
-      throw error;
+      throw new AppError(ERROR_DICTIONARY.INVALID_PRICE);
     }
 
     if (productData.stock < 0) {
-      const error = new Error("Stock cannot be negative");
-      error.statusCode = 400;
-      throw error;
+      throw new AppError(ERROR_DICTIONARY.INVALID_STOCK);
     }
 
     const status =
@@ -49,25 +50,23 @@ export class ProductsService {
   }
 
   async updateProduct(id, updateData) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError(ERROR_DICTIONARY.INVALID_ID);
+    }
+
     const existingProduct = await productsRepository.findById(id);
 
     if (!existingProduct) {
-      const error = new Error("Product not found");
-      error.statusCode = 404;
-      throw error;
+      throw new AppError(ERROR_DICTIONARY.PRODUCT_NOT_FOUND);
     }
 
     if (updateData.price !== undefined && updateData.price < 0) {
-      const error = new Error("Price cannot be negative");
-      error.statusCode = 400;
-      throw error;
+      throw new AppError(ERROR_DICTIONARY.INVALID_PRICE);
     }
 
     if (updateData.stock !== undefined) {
       if (updateData.stock < 0) {
-        const error = new Error("Stock cannot be negative");
-        error.statusCode = 400;
-        throw error;
+        throw new AppError(ERROR_DICTIONARY.INVALID_STOCK);
       }
 
       updateData.status =

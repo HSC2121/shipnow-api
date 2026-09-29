@@ -2,7 +2,7 @@
 
 ShipNow API is a backend REST API designed for a logistics company to manage users, products, orders, drivers, deliveries, and test data.
 
-The project follows a layered architecture that separates HTTP handling, business logic, database access, and data models. This structure improves maintainability, testability, and scalability as the application grows.
+The project follows a layered architecture that separates HTTP handling, business logic, database access, data models, and centralized error handling. This structure improves maintainability, testability, consistency, and scalability as the application grows.
 
 ## Tech Stack
 
@@ -20,6 +20,10 @@ The application follows this dependency flow:
 
 ```text
 Route → Controller → Service → Repository → Model → MongoDB
+                       ↓
+                  AppError
+                       ↓
+             Global Error Middleware
 ```
 
 ### Routes
@@ -30,7 +34,9 @@ Define the API endpoints and connect each request to the appropriate Controller.
 
 Handle the HTTP layer.
 
-Controllers receive requests, extract parameters or request bodies, call the appropriate Service, and return HTTP responses.
+Controllers receive requests, extract parameters or request bodies, call the appropriate Service, and return successful HTTP responses.
+
+When an error occurs, Controllers pass it to the global error middleware using `next(error)`.
 
 Controllers do not contain business logic or communicate directly with MongoDB.
 
@@ -44,10 +50,12 @@ Examples include:
 - Preventing negative product prices or stock
 - Normalizing user email addresses
 - Preventing duplicate email registrations
+- Validating MongoDB resource IDs
 - Generating simulated test data
 - Validating mock data quantities
 - Coordinating relationships between generated users, orders, deliveries, and drivers
 - Handling resources that do not exist
+- Converting expected domain failures into controlled `AppError` instances
 
 ### Repositories
 
@@ -57,7 +65,7 @@ Repositories are responsible for querying and modifying data through Mongoose, i
 
 The mocks repository also provides bulk insertion of generated test records using `insertMany()`.
 
-Keeping database access inside repositories prevents the business layer from depending directly on MongoDB or Mongoose.
+Keeping database access inside repositories prevents the business layer from depending directly on MongoDB operations.
 
 ### Models
 
@@ -70,6 +78,16 @@ The application currently includes models for:
 - Drivers
 - Orders
 - Deliveries
+
+### Error Layer
+
+Application errors are centralized through three components:
+
+- `AppError` represents controlled application and domain errors.
+- `ERROR_DICTIONARY` centralizes error codes, HTTP status codes, and public messages.
+- `errorHandler` is the global Express middleware responsible for producing the final error response.
+
+This keeps error responses consistent and prevents business logic from manually formatting HTTP errors.
 
 ## Project Structure
 
@@ -84,6 +102,11 @@ src/
 │   ├── mocks.controller.js
 │   ├── products.controller.js
 │   └── users.controller.js
+├── errors/
+│   ├── app.error.js
+│   └── error.dictionary.js
+├── middlewares/
+│   └── error.middleware.js
 ├── models/
 │   ├── delivery.model.js
 │   ├── driver.model.js
@@ -347,6 +370,8 @@ Example response:
 
 Unlike the mock `GET` endpoints, the seed endpoint persists the generated records in MongoDB.
 
+If persistence fails during the seed operation, the error is converted into a controlled `MOCK_SEED_FAILED` application error instead of exposing the underlying database error to the client.
+
 ## Domain Constants
 
 Application roles, product statuses, order statuses, order priorities, and delivery statuses are centralized as immutable constants.
@@ -431,33 +456,259 @@ qty=abc
 qty=101
 ```
 
-return:
+return HTTP `400 Bad Request` using the centralized error format:
+
+```json
+{
+  "status": "error",
+  "errorCode": "INVALID_MOCK_QUANTITY",
+  "statusCode": 400,
+  "message": "Quantity must be an integer between 1 and 100"
+}
+```
+
+## Centralized Error Handling
+
+The API uses a common error layer so expected failures produce clear, predictable, and uniform HTTP responses.
+
+Business and validation errors are represented by the custom `AppError` class.
+
+Instead of creating isolated errors such as:
+
+```js
+const error = new Error("Product not found");
+error.statusCode = 404;
+throw error;
+```
+
+Services use the centralized error dictionary:
+
+```js
+throw new AppError(ERROR_DICTIONARY.PRODUCT_NOT_FOUND);
+```
+
+The error dictionary defines the public error code, HTTP status code, and message in one place.
+
+The global error middleware is registered after the application routes and is responsible for producing the final HTTP error response.
+
+The standard error structure is:
+
+```json
+{
+  "status": "error",
+  "errorCode": "PRODUCT_NOT_FOUND",
+  "statusCode": 404,
+  "message": "Product not found"
+}
+```
+
+Unexpected errors are not exposed directly to clients. They return a generic response:
+
+```json
+{
+  "status": "error",
+  "errorCode": "INTERNAL_SERVER_ERROR",
+  "statusCode": 500,
+  "message": "Internal server error"
+}
+```
+
+Technical error information remains available on the server for debugging.
+
+### Error Dictionary
+
+Current controlled errors include:
+
+```text
+USER_NOT_FOUND            → 404 Not Found
+EMAIL_ALREADY_REGISTERED  → 409 Conflict
+PRODUCT_NOT_FOUND         → 404 Not Found
+INVALID_ID                → 400 Bad Request
+INVALID_PRICE             → 400 Bad Request
+INVALID_STOCK             → 400 Bad Request
+INVALID_MOCK_QUANTITY     → 400 Bad Request
+MOCK_SEED_FAILED          → 500 Internal Server Error
+```
+
+### Invalid Resource IDs
+
+MongoDB resource IDs are validated before they reach repository queries.
+
+For example:
+
+```http
+GET /api/products/abc
+```
+
+returns:
+
+```json
+{
+  "status": "error",
+  "errorCode": "INVALID_ID",
+  "statusCode": 400,
+  "message": "Invalid resource ID"
+}
+```
+
+A correctly formatted MongoDB ObjectId that does not reference an existing resource instead returns the corresponding `404` domain error.
+
+Example:
+
+```http
+GET /api/products/000000000000000000000000
+```
+
+Response:
+
+```json
+{
+  "status": "error",
+  "errorCode": "PRODUCT_NOT_FOUND",
+  "statusCode": 404,
+  "message": "Product not found"
+}
+```
+
+## Testing Error Cases
+
+The centralized error layer can be tested with the following requests.
+
+### Invalid mock quantity
+
+```http
+GET /api/mocks/users?qty=0
+GET /api/mocks/users?qty=-5
+GET /api/mocks/users?qty=abc
+GET /api/mocks/users?qty=101
+```
+
+Expected status:
 
 ```text
 400 Bad Request
 ```
 
-with:
+Expected error code:
+
+```text
+INVALID_MOCK_QUANTITY
+```
+
+### Invalid product price
+
+```http
+POST /api/products
+```
+
+```json
+{
+  "name": "Test Product",
+  "description": "Testing centralized error handling",
+  "price": -50,
+  "stock": 10
+}
+```
+
+Expected:
+
+```text
+400 Bad Request
+INVALID_PRICE
+```
+
+### Invalid product stock
+
+```http
+POST /api/products
+```
+
+```json
+{
+  "name": "Test Product",
+  "description": "Testing negative stock",
+  "price": 50,
+  "stock": -10
+}
+```
+
+Expected:
+
+```text
+400 Bad Request
+INVALID_STOCK
+```
+
+### Product not found
+
+```http
+GET /api/products/000000000000000000000000
+```
+
+Expected:
+
+```text
+404 Not Found
+PRODUCT_NOT_FOUND
+```
+
+### User not found
+
+```http
+GET /api/users/000000000000000000000000
+```
+
+Expected:
+
+```text
+404 Not Found
+USER_NOT_FOUND
+```
+
+### Invalid resource ID
+
+```http
+GET /api/products/abc
+```
+
+or:
+
+```http
+GET /api/users/abc
+```
+
+Expected:
+
+```text
+400 Bad Request
+INVALID_ID
+```
+
+### Duplicate email
+
+Create a user with an email address that already exists.
+
+Expected:
+
+```text
+409 Conflict
+EMAIL_ALREADY_REGISTERED
+```
+
+### Mock seed failure
+
+Failures during MongoDB persistence are converted into:
 
 ```json
 {
   "status": "error",
-  "message": "Quantity must be an integer between 1 and 100"
+  "errorCode": "MOCK_SEED_FAILED",
+  "statusCode": 500,
+  "message": "Failed to seed mock data"
 }
 ```
 
-## Error Handling
-
-The API uses centralized error handling and returns appropriate HTTP status codes.
-
-Examples:
-
-```text
-400 Bad Request   → Invalid product or mock data
-404 Not Found     → Product or user does not exist
-409 Conflict      → Email already registered
-500 Internal Server Error → Unexpected server error
-```
+The underlying database error is not exposed to the client.
 
 ## Service vs Repository
 
@@ -467,9 +718,9 @@ The **Service layer** answers:
 
 > What business rules should the application enforce?
 
-For example, a product with zero stock becomes unavailable, two users cannot register the same email address, and mock quantities must remain within the allowed range.
+For example, a product with zero stock becomes unavailable, two users cannot register the same email address, resource IDs must be valid, and mock quantities must remain within the allowed range.
 
-The mock Service also coordinates how generated entities relate to each other.
+The mock Service also coordinates how generated entities relate to each other and converts persistence failures into controlled application errors.
 
 The **Repository layer** answers:
 
