@@ -1,3 +1,4 @@
+
 import { UserModel } from "../models/user.model.js";
 
 export class UsersRepository {
@@ -37,7 +38,7 @@ export class UsersRepository {
       id,
       updateData,
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true
       }
     );

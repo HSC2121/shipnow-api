@@ -1,8 +1,10 @@
+
 import mongoose from "mongoose";
 import { ProductsRepository } from "../repositories/products.repository.js";
 import { PRODUCT_STATUS } from "../constants/index.js";
 import { AppError } from "../errors/app.error.js";
 import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
+import logger from "../config/logger.config.js";
 
 const productsRepository = new ProductsRepository();
 
@@ -43,10 +45,17 @@ export class ProductsService {
         ? PRODUCT_STATUS.AVAILABLE
         : PRODUCT_STATUS.OUT_OF_STOCK;
 
-    return await productsRepository.create({
+    const product = await productsRepository.create({
       ...productData,
       status,
     });
+
+    logger.info("Product created successfully", {
+      productId: product._id.toString(),
+      status: product.status,
+    });
+
+    return product;
   }
 
   async updateProduct(id, updateData) {
@@ -75,6 +84,16 @@ export class ProductsService {
           : PRODUCT_STATUS.OUT_OF_STOCK;
     }
 
-    return await productsRepository.updateById(id, updateData);
+    const updatedProduct = await productsRepository.updateById(
+      id,
+      updateData
+    );
+
+    logger.info("Product updated successfully", {
+      productId: id,
+      status: updatedProduct.status,
+    });
+
+    return updatedProduct;
   }
 }

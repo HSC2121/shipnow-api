@@ -13,6 +13,8 @@ The project follows a layered architecture that separates HTTP handling, busines
 - dotenv
 - Faker
 - Nodemon
+- Winston
+- winston-daily-rotate-file
 
 ## Architecture
 
@@ -95,7 +97,8 @@ This keeps error responses consistent and prevents business logic from manually 
 src/
 ├── config/
 │   ├── database.config.js
-│   └── env.config.js
+│   ├── env.config.js
+│   └── logger.config.js
 ├── constants/
 │   └── index.js
 ├── controllers/
@@ -118,6 +121,7 @@ src/
 │   ├── products.repository.js
 │   └── users.repository.js
 ├── routes/
+│   ├── logger.routes.js
 │   ├── mocks.routes.js
 │   ├── products.routes.js
 │   └── users.routes.js
@@ -513,7 +517,7 @@ Unexpected errors are not exposed directly to clients. They return a generic res
 }
 ```
 
-Technical error information remains available on the server for debugging.
+Technical error information remains available in server-side Winston logs for debugging.
 
 ### Error Dictionary
 
@@ -528,6 +532,7 @@ INVALID_PRICE             → 400 Bad Request
 INVALID_STOCK             → 400 Bad Request
 INVALID_MOCK_QUANTITY     → 400 Bad Request
 MOCK_SEED_FAILED          → 500 Internal Server Error
+ROUTE_NOT_FOUND           → 404 Not Found
 ```
 
 ### Invalid Resource IDs
@@ -709,6 +714,82 @@ Failures during MongoDB persistence are converted into:
 ```
 
 The underlying database error is not exposed to the client.
+
+## Logging and Monitoring
+
+ShipNow uses **Winston** for structured application logging instead of `console.log`. The centralized configuration lives in `src/config/logger.config.js`.
+
+### Custom Log Levels
+
+The logger defines six levels, ordered from highest to lowest severity:
+
+| Level | Priority | Example use |
+| --- | ---: | --- |
+| `fatal` | 0 | Critical startup or database connection failure |
+| `error` | 1 | Unexpected server errors, 5xx errors, or failed database seeding |
+| `warning` | 2 | Expected client errors such as invalid quantities, duplicate emails, and missing routes |
+| `info` | 3 | Server startup, MongoDB connection, successful resource changes, and seed completion |
+| `http` | 4 | HTTP-related diagnostic events |
+| `debug` | 5 | Detailed mock-data generation activity |
+
+These are custom Winston levels. They are not HTTP response status codes.
+
+### Environment Behavior
+
+- **Development** (`NODE_ENV=development`): logs `debug` and all more severe levels to the console.
+- **Production** (`NODE_ENV=production`): logs `info` and all more severe levels to the console. `debug` and `http` are filtered out.
+
+Console messages include timestamps, levels, and contextual metadata. File entries use JSON formatting.
+
+### Rotating Error Files
+
+Only `error` and `fatal` events are persisted to rotating files:
+
+```text
+logs/error-YYYY-MM-DD.log
+```
+
+Rotation uses `winston-daily-rotate-file` with a daily filename, a **10 MB** maximum file size, and **14-day** retention. The `logs/` directory is excluded from Git through `.gitignore`.
+
+Expected application errors (4xx) are logged as `warning`. Server errors (5xx) are logged as `error`, with stack information where available. Critical connection/startup failures use `fatal`.
+
+### Test the Logger
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Then run:
+
+```bash
+curl -i http://localhost:8080/api/logger/test
+```
+
+The endpoint returns HTTP `200` and emits one sample message for each of the six custom levels. All six appear in the development console; only the `error` and `fatal` samples are written to the rotating log file.
+
+The logger test endpoint is **development-only**. In production it returns HTTP `404` and does not emit the six test messages.
+
+To inspect today's error file:
+
+```bash
+cat logs/error-$(date +%Y-%m-%d).log
+```
+
+To check the centralized error logging, request an invalid mock quantity:
+
+```bash
+curl -i "http://localhost:8080/api/mocks/users?qty=0"
+```
+
+Expected result: HTTP `400` with `INVALID_MOCK_QUANTITY`, plus a `warning` console entry containing the request method, path, and status code.
+
+### Logged Application Events
+
+Logging is integrated into server startup, MongoDB connection, global error handling, mock generation and seeding, and user/product creation and updates. Unknown routes are handled as controlled `ROUTE_NOT_FOUND` errors.
+
+This project does not expose an order-creation endpoint, so no order-creation log event is claimed.
 
 ## Service vs Repository
 

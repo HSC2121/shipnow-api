@@ -46,4 +46,10 @@ export const ERROR_DICTIONARY = Object.freeze({
     statusCode: 500,
     message: "Failed to seed mock data",
   },
+
+  ROUTE_NOT_FOUND: {
+    errorCode: "ROUTE_NOT_FOUND",
+    statusCode: 404,
+    message: "Route not found",
+  },
 });

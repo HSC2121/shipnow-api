@@ -8,6 +8,7 @@ import {
 } from "../constants/index.js";
 import { AppError } from "../errors/app.error.js";
 import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
+import logger from "../config/logger.config.js";
 
 const mocksRepository = new MocksRepository();
 
@@ -31,6 +32,10 @@ export class MocksService {
   generateUsers(qty = 10) {
     const quantity = this.validateQuantity(qty);
 
+    logger.debug("Generating mock users", {
+      quantity
+    });
+
     return Array.from({ length: quantity }, () => ({
       firstName: faker.person.firstName(),
       lastName: faker.person.lastName(),
@@ -41,6 +46,10 @@ export class MocksService {
 
   generateDrivers(qty = 10) {
     const quantity = this.validateQuantity(qty);
+
+    logger.debug("Generating mock drivers", {
+      quantity
+    });
 
     return Array.from({ length: quantity }, () => ({
       firstName: faker.person.firstName(),
@@ -56,6 +65,10 @@ export class MocksService {
     const quantity = this.validateQuantity(qty);
     const statuses = Object.values(ORDER_STATUS);
     const priorities = Object.values(ORDER_PRIORITY);
+
+    logger.debug("Generating mock orders", {
+      quantity
+    });
 
     return Array.from({ length: quantity }, () => ({
       total: faker.number.float({
@@ -73,6 +86,10 @@ export class MocksService {
     const quantity = this.validateQuantity(qty);
     const statuses = Object.values(DELIVERY_STATUS);
 
+    logger.debug("Generating mock deliveries", {
+      quantity
+    });
+
     return Array.from({ length: quantity }, () => ({
       status: faker.helpers.arrayElement(statuses),
       estimatedDeliveryDate: faker.date.future()
@@ -81,6 +98,10 @@ export class MocksService {
 
   async seedData(qty = 10) {
     const quantity = this.validateQuantity(qty);
+
+    logger.info("Starting mock database seeding", {
+      quantity
+    });
 
     try {
       const users = this.generateUsers(quantity);
@@ -109,15 +130,26 @@ export class MocksService {
       const savedDeliveries =
         await mocksRepository.insertDeliveries(deliveries);
 
+      const inserted = {
+        users: savedUsers.length,
+        drivers: savedDrivers.length,
+        orders: savedOrders.length,
+        deliveries: savedDeliveries.length
+      };
+
+      logger.info("Mock database seeding completed successfully", {
+        inserted
+      });
+
       return {
-        inserted: {
-          users: savedUsers.length,
-          drivers: savedDrivers.length,
-          orders: savedOrders.length,
-          deliveries: savedDeliveries.length
-        }
+        inserted
       };
     } catch (error) {
+      logger.error("Mock database seeding failed", {
+        error: error.message,
+        stack: error.stack
+      });
+
       throw new AppError(
         ERROR_DICTIONARY.MOCK_SEED_FAILED
       );

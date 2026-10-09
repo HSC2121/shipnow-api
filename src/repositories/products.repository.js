@@ -1,3 +1,4 @@
+
 import { ProductModel } from "../models/product.model.js";
 import { PRODUCT_STATUS } from "../constants/index.js";
 
@@ -35,7 +36,7 @@ export class ProductsRepository {
 
   async updateById(id, updateData) {
     return await ProductModel.findByIdAndUpdate(id, updateData, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
   }

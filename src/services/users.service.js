@@ -1,7 +1,9 @@
+
 import mongoose from "mongoose";
 import { UsersRepository } from "../repositories/users.repository.js";
 import { AppError } from "../errors/app.error.js";
 import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
+import logger from "../config/logger.config.js";
 
 const usersRepository = new UsersRepository();
 
@@ -36,10 +38,16 @@ export class UsersService {
       );
     }
 
-    return await usersRepository.create({
+    const user = await usersRepository.create({
       ...userData,
       email: normalizedEmail
     });
+
+    logger.info("User created successfully", {
+      userId: user._id.toString()
+    });
+
+    return user;
   }
 
   async updateUser(id, updateData) {
@@ -71,6 +79,15 @@ export class UsersService {
       updateData.email = normalizedEmail;
     }
 
-    return await usersRepository.updateById(id, updateData);
+    const updatedUser = await usersRepository.updateById(
+      id,
+      updateData
+    );
+
+    logger.info("User updated successfully", {
+      userId: id
+    });
+
+    return updatedUser;
   }
 }
