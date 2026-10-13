@@ -1,0 +1,289 @@
+
+paths:
+  /api/products:
+    get:
+      tags:
+        - Products
+      summary: Get all products
+      description: Retrieve all products registered in ShipNow.
+      responses:
+        "200":
+          description: Products retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      tags:
+        - Products
+      summary: Create a product
+      description: >
+        Create a new product. The product status is automatically
+        determined by its stock quantity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - price
+                - stock
+              properties:
+                name:
+                  type: string
+                  example: Wireless Headphones
+                description:
+                  type: string
+                  example: Bluetooth wireless headphones.
+                price:
+                  type: number
+                  format: float
+                  minimum: 0
+                  example: 59.99
+                stock:
+                  type: number
+                  minimum: 0
+                  example: 25
+      responses:
+        "201":
+          description: Product created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid price or stock quantity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidPrice:
+                  summary: Negative price
+                  value:
+                    status: error
+                    errorCode: INVALID_PRICE
+                    statusCode: 400
+                    message: Price cannot be negative
+                invalidStock:
+                  summary: Negative stock
+                  value:
+                    status: error
+                    errorCode: INVALID_STOCK
+                    statusCode: 400
+                    message: Stock cannot be negative
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/products/available:
+    get:
+      tags:
+        - Products
+      summary: Get available products
+      description: Retrieve products with available status.
+      responses:
+        "200":
+          description: Available products retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      description: Retrieve a product using its MongoDB document ID.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: MongoDB product identifier.
+          schema:
+            type: string
+          example: "507f1f77bcf86cd799439012"
+      responses:
+        "200":
+          description: Product retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid MongoDB identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: INVALID_ID
+                statusCode: 400
+                message: Invalid resource ID
+        "404":
+          description: Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: PRODUCT_NOT_FOUND
+                statusCode: 404
+                message: Product not found
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      tags:
+        - Products
+      summary: Update a product
+      description: >
+        Update an existing product. When stock is updated,
+        the product status is automatically recalculated.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: MongoDB product identifier.
+          schema:
+            type: string
+          example: "507f1f77bcf86cd799439012"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Updated Wireless Headphones
+                description:
+                  type: string
+                  example: Updated Bluetooth headphones.
+                price:
+                  type: number
+                  format: float
+                  minimum: 0
+                  example: 49.99
+                stock:
+                  type: number
+                  minimum: 0
+                  example: 15
+                status:
+                  type: string
+                  enum: [available, out_of_stock]
+                  description: >
+                    Can be updated directly, but is recalculated
+                    automatically when stock is provided.
+      responses:
+        "200":
+          description: Product updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid ID, price, or stock quantity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidId:
+                  summary: Invalid product ID
+                  value:
+                    status: error
+                    errorCode: INVALID_ID
+                    statusCode: 400
+                    message: Invalid resource ID
+                invalidPrice:
+                  summary: Negative price
+                  value:
+                    status: error
+                    errorCode: INVALID_PRICE
+                    statusCode: 400
+                    message: Price cannot be negative
+                invalidStock:
+                  summary: Negative stock
+                  value:
+                    status: error
+                    errorCode: INVALID_STOCK
+                    statusCode: 400
+                    message: Stock cannot be negative
+        "404":
+          description: Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: PRODUCT_NOT_FOUND
+                statusCode: 404
+                message: Product not found
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"

@@ -1,0 +1,379 @@
+
+paths:
+  /api/mocks/users:
+    get:
+      tags:
+        - Mocks
+      summary: Generate mock users
+      description: >
+        Generate random user data without inserting it into the database.
+        The default quantity is 10.
+      parameters:
+        - in: query
+          name: qty
+          required: false
+          description: Number of mock users to generate (1 to 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          example: 5
+      responses:
+        "200":
+          description: Mock users generated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [firstName, lastName, email, role]
+                      properties:
+                        firstName:
+                          type: string
+                          example: John
+                        lastName:
+                          type: string
+                          example: Doe
+                        email:
+                          type: string
+                          format: email
+                          example: john@example.com
+                        role:
+                          type: string
+                          enum: [user]
+                          example: user
+        "400":
+          description: Invalid mock quantity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: INVALID_MOCK_QUANTITY
+                statusCode: 400
+                message: Quantity must be an integer between 1 and 100
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/mocks/drivers:
+    get:
+      tags:
+        - Mocks
+      summary: Generate mock drivers
+      description: >
+        Generate random driver data without inserting it into the database.
+        The default quantity is 10.
+      parameters:
+        - in: query
+          name: qty
+          required: false
+          description: Number of mock drivers to generate (1 to 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          example: 5
+      responses:
+        "200":
+          description: Mock drivers generated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - firstName
+                        - lastName
+                        - email
+                        - role
+                        - vehicle
+                        - available
+                      properties:
+                        firstName:
+                          type: string
+                          example: Jane
+                        lastName:
+                          type: string
+                          example: Smith
+                        email:
+                          type: string
+                          format: email
+                          example: jane@example.com
+                        role:
+                          type: string
+                          enum: [driver]
+                          example: driver
+                        vehicle:
+                          type: string
+                          example: Motorcycle
+                        available:
+                          type: boolean
+                          example: true
+        "400":
+          description: Invalid mock quantity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: INVALID_MOCK_QUANTITY
+                statusCode: 400
+                message: Quantity must be an integer between 1 and 100
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/mocks/orders:
+    get:
+      tags:
+        - Mocks
+        - Orders
+      summary: Generate mock orders
+      description: >
+        Generate random order data without inserting it into the database.
+        User references are assigned only during database seeding.
+      parameters:
+        - in: query
+          name: qty
+          required: false
+          description: Number of mock orders to generate (1 to 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          example: 5
+      responses:
+        "200":
+          description: Mock orders generated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - total
+                        - status
+                        - priority
+                        - deliveryAddress
+                      properties:
+                        total:
+                          type: number
+                          format: float
+                          example: 125.50
+                        status:
+                          type: string
+                          enum:
+                            - pending
+                            - confirmed
+                            - in_transit
+                            - delivered
+                            - cancelled
+                          example: pending
+                        priority:
+                          type: string
+                          enum: [low, normal, high]
+                          example: normal
+                        deliveryAddress:
+                          type: string
+                          example: 123 Main Street
+        "400":
+          description: Invalid mock quantity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: INVALID_MOCK_QUANTITY
+                statusCode: 400
+                message: Quantity must be an integer between 1 and 100
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/mocks/deliveries:
+    get:
+      tags:
+        - Mocks
+        - Deliveries
+      summary: Generate mock deliveries
+      description: >
+        Generate random delivery data without inserting it into the database.
+        Order and driver references are assigned during database seeding.
+      parameters:
+        - in: query
+          name: qty
+          required: false
+          description: Number of mock deliveries to generate (1 to 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          example: 5
+      responses:
+        "200":
+          description: Mock deliveries generated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - status
+                        - estimatedDeliveryDate
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - pending
+                            - assigned
+                            - in_transit
+                            - delivered
+                          example: pending
+                        estimatedDeliveryDate:
+                          type: string
+                          format: date-time
+                          example: "2026-10-15T14:00:00.000Z"
+        "400":
+          description: Invalid mock quantity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: INVALID_MOCK_QUANTITY
+                statusCode: 400
+                message: Quantity must be an integer between 1 and 100
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/mocks/seed:
+    post:
+      tags:
+        - Mocks
+      summary: Seed the database with mock data
+      description: >
+        Generate and insert mock users, drivers, orders, and deliveries
+        into MongoDB. Each order references a generated user, and each
+        delivery references a generated order and driver.
+        No request body is required. This operation writes data
+        to the database.
+      parameters:
+        - in: query
+          name: qty
+          required: false
+          description: >
+            Number of records to generate per collection (1 to 100).
+            The default is 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          example: 5
+      responses:
+        "201":
+          description: Mock data inserted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - inserted
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                    example: success
+                  inserted:
+                    type: object
+                    required:
+                      - users
+                      - drivers
+                      - orders
+                      - deliveries
+                    properties:
+                      users:
+                        type: integer
+                        example: 5
+                      drivers:
+                        type: integer
+                        example: 5
+                      orders:
+                        type: integer
+                        example: 5
+                      deliveries:
+                        type: integer
+                        example: 5
+        "400":
+          description: Invalid mock quantity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: INVALID_MOCK_QUANTITY
+                statusCode: 400
+                message: Quantity must be an integer between 1 and 100
+        "500":
+          description: Mock database seeding failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: MOCK_SEED_FAILED
+                statusCode: 500
+                message: Failed to seed mock data

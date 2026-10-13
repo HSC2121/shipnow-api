@@ -15,6 +15,8 @@ The project follows a layered architecture that separates HTTP handling, busines
 - Nodemon
 - Winston
 - winston-daily-rotate-file
+- swagger-jsdoc
+- swagger-ui-express
 
 ## Architecture
 
@@ -105,6 +107,13 @@ src/
 │   ├── mocks.controller.js
 │   ├── products.controller.js
 │   └── users.controller.js
+├── docs/
+│   ├── swagger.config.js
+│   ├── schemas.yaml
+│   ├── users.yaml
+│   ├── products.yaml
+│   ├── mocks.yaml
+│   └── logger.yaml
 ├── errors/
 │   ├── app.error.js
 │   └── error.dictionary.js
@@ -178,6 +187,48 @@ The API will be available at:
 ```text
 http://localhost:8080
 ```
+
+## Interactive API Documentation (Swagger / OpenAPI)
+
+ShipNow provides interactive documentation using **OpenAPI 3.0**, **swagger-jsdoc**, and **swagger-ui-express**. The Swagger configuration is kept separate from route logic in `src/docs/swagger.config.js`; endpoint descriptions and reusable schemas are defined in YAML files under `src/docs/`.
+
+With the server running, open:
+
+```text
+http://localhost:8080/api/docs
+```
+
+Swagger UI lets you inspect HTTP methods, paths, parameters, JSON request bodies, successful responses, and documented error responses. Use **Try it out → Execute** to send requests to your running local API.
+
+### Documented Modules
+
+| Tag | Coverage |
+| --- | --- |
+| Users | List, retrieve by ID, create, and update users |
+| Products | List, list available, retrieve by ID, create, and update products |
+| Mocks | Generate mock users, drivers, orders, and deliveries; seed the database |
+| Orders | Mock order generation (`GET /api/mocks/orders`) |
+| Deliveries | Mock delivery generation (`GET /api/mocks/deliveries`) |
+| Logger | Development-only logging validation (`GET /api/logger/test`) |
+
+There are **15 unique documented operations**. The Orders and Deliveries tags reuse their existing mock-generation operations; they do **not** represent separate Orders or Deliveries CRUD routes. Models exist for both entities, but dedicated CRUD endpoints have not been implemented.
+
+### Reusable Schemas
+
+OpenAPI components define eight reusable schemas: `User`, `Product`, `Driver`, `Order`, `OrderItem`, `Delivery`, `SuccessResponse`, and `ErrorResponse`. Endpoint definitions reference shared schemas using `$ref` where applicable.
+
+The documented errors include invalid resource IDs, missing resources, duplicate email addresses, invalid prices or stock, invalid mock quantities, database seeding failures, and internal server errors. Authentication endpoints and order/delivery status-transition endpoints are not currently implemented and are not presented as available API operations.
+
+### Testing Notes
+
+1. Start MongoDB and run `npm run dev` with `NODE_ENV=development`.
+2. Open `http://localhost:8080/api/docs` and expand an endpoint.
+3. Select **Try it out**, enter any required values, then select **Execute**.
+4. For a read-only test, use `GET /api/mocks/users?qty=2`; try `qty=0` to verify the documented HTTP `400` error.
+5. `POST /api/mocks/seed` **writes records to MongoDB**; only execute it when you intend to create test data.
+6. `GET /api/logger/test` is a diagnostic endpoint, not a business feature. It works in development and returns HTTP `404` outside development.
+
+Changes to YAML documentation may require restarting the server before they appear in Swagger UI.
 
 ## Product Endpoints
 
@@ -723,14 +774,14 @@ ShipNow uses **Winston** for structured application logging instead of `console.
 
 The logger defines six levels, ordered from highest to lowest severity:
 
-| Level | Priority | Example use |
-| --- | ---: | --- |
-| `fatal` | 0 | Critical startup or database connection failure |
-| `error` | 1 | Unexpected server errors, 5xx errors, or failed database seeding |
-| `warning` | 2 | Expected client errors such as invalid quantities, duplicate emails, and missing routes |
-| `info` | 3 | Server startup, MongoDB connection, successful resource changes, and seed completion |
-| `http` | 4 | HTTP-related diagnostic events |
-| `debug` | 5 | Detailed mock-data generation activity |
+| Level     | Priority | Example use                                                                             |
+| --------- | -------: | --------------------------------------------------------------------------------------- |
+| `fatal`   |        0 | Critical startup or database connection failure                                         |
+| `error`   |        1 | Unexpected server errors, 5xx errors, or failed database seeding                        |
+| `warning` |        2 | Expected client errors such as invalid quantities, duplicate emails, and missing routes |
+| `info`    |        3 | Server startup, MongoDB connection, successful resource changes, and seed completion    |
+| `http`    |        4 | HTTP-related diagnostic events                                                          |
+| `debug`   |        5 | Detailed mock-data generation activity                                                  |
 
 These are custom Winston levels. They are not HTTP response status codes.
 

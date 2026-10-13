@@ -1,0 +1,251 @@
+
+components:
+  schemas:
+    User:
+      type: object
+      description: A registered ShipNow user.
+      required:
+        - firstName
+        - lastName
+        - email
+      properties:
+        _id:
+          type: string
+          description: MongoDB document identifier.
+          example: "507f1f77bcf86cd799439011"
+        firstName:
+          type: string
+          description: User's first name.
+          example: "John"
+        lastName:
+          type: string
+          description: User's last name.
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          description: Unique email address.
+          example: "john@example.com"
+        role:
+          type: string
+          enum: [admin, user, driver]
+          default: user
+          example: user
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      description: A product available through ShipNow.
+      required:
+        - name
+        - price
+        - stock
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439012"
+        name:
+          type: string
+          example: "Wireless Headphones"
+        description:
+          type: string
+          default: ""
+          example: "Bluetooth wireless headphones."
+        price:
+          type: number
+          format: float
+          minimum: 0
+          description: Product price.
+          example: 59.99
+        stock:
+          type: number
+          minimum: 0
+          description: Available inventory.
+          example: 25
+        status:
+          type: string
+          enum: [available, out_of_stock]
+          default: available
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Driver:
+      type: object
+      description: A driver registered in ShipNow.
+      required:
+        - firstName
+        - lastName
+        - email
+        - vehicle
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439013"
+        firstName:
+          type: string
+          example: "Jane"
+        lastName:
+          type: string
+          example: "Smith"
+        email:
+          type: string
+          format: email
+          example: "jane@example.com"
+        role:
+          type: string
+          enum: [driver]
+          default: driver
+        vehicle:
+          type: string
+          example: "Motorcycle"
+        available:
+          type: boolean
+          default: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      description: A ShipNow order.
+      required:
+        - user
+        - total
+        - deliveryAddress
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439014"
+        user:
+          type: string
+          description: MongoDB reference to a user.
+          example: "507f1f77bcf86cd799439011"
+        total:
+          type: number
+          format: float
+          minimum: 0
+          example: 125.50
+        status:
+          type: string
+          enum: [pending, confirmed, in_transit, delivered, cancelled]
+          default: pending
+        priority:
+          type: string
+          enum: [low, normal, high]
+          default: normal
+        deliveryAddress:
+          type: string
+          example: "123 Main Street"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderItem:
+      type: object
+      description: >
+        Reusable schema for a potential order line item.
+        Not currently stored in the ShipNow Order model.
+      required:
+        - product
+        - quantity
+        - price
+      properties:
+        product:
+          type: string
+          description: MongoDB reference to a product.
+          example: "507f1f77bcf86cd799439012"
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+        price:
+          type: number
+          format: float
+          minimum: 0
+          example: 59.99
+
+    Delivery:
+      type: object
+      description: A delivery associated with a ShipNow order.
+      required:
+        - order
+        - estimatedDeliveryDate
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439015"
+        order:
+          type: string
+          description: MongoDB reference to an order.
+          example: "507f1f77bcf86cd799439014"
+        driver:
+          type: string
+          nullable: true
+          description: Assigned driver ID, or null if unassigned.
+          example: "507f1f77bcf86cd799439013"
+        status:
+          type: string
+          enum: [pending, assigned, in_transit, delivered]
+          default: pending
+        estimatedDeliveryDate:
+          type: string
+          format: date-time
+          example: "2026-10-15T14:00:00.000Z"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SuccessResponse:
+      type: object
+      description: Standard successful API response.
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [success]
+          example: success
+        data:
+          description: Response payload, when applicable.
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      description: Standard ShipNow API error response.
+      required:
+        - status
+        - errorCode
+        - statusCode
+        - message
+      properties:
+        status:
+          type: string
+          enum: [error]
+          example: error
+        errorCode:
+          type: string
+          example: USER_NOT_FOUND
+        statusCode:
+          type: integer
+          example: 404
+        message:
+          type: string
+          example: User not found

@@ -1,0 +1,63 @@
+
+paths:
+  /api/logger/test:
+    get:
+      tags:
+        - Logger
+      summary: Test all logger levels
+      description: >
+        Development-only diagnostic endpoint used to validate
+        the six Winston logging levels: debug, http, info,
+        warning, error, and fatal.
+
+        This endpoint is a logging validation tool, not a
+        business functionality. It returns 404 when the
+        application is not running in development mode.
+      responses:
+        "200":
+          description: All logger levels executed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - message
+                  - levels
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                    example: success
+                  message:
+                    type: string
+                    example: Logger test completed
+                  levels:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - debug
+                        - http
+                        - info
+                        - warning
+                        - error
+                        - fatal
+                    example:
+                      - debug
+                      - http
+                      - info
+                      - warning
+                      - error
+                      - fatal
+        "404":
+          description: Endpoint unavailable outside development mode.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                errorCode: ROUTE_NOT_FOUND
+                statusCode: 404
+                message: Route not found
