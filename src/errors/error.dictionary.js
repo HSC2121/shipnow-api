@@ -1,4 +1,11 @@
+
 export const ERROR_DICTIONARY = Object.freeze({
+  INVALID_USER_DATA: {
+    errorCode: "INVALID_USER_DATA",
+    statusCode: 400,
+    message: "First name, last name, and email are required",
+  },
+
   USER_NOT_FOUND: {
     errorCode: "USER_NOT_FOUND",
     statusCode: 404,
@@ -45,6 +52,30 @@ export const ERROR_DICTIONARY = Object.freeze({
     errorCode: "MOCK_SEED_FAILED",
     statusCode: 500,
     message: "Failed to seed mock data",
+  },
+
+  ORDER_NOT_FOUND: {
+    errorCode: "ORDER_NOT_FOUND",
+    statusCode: 404,
+    message: "Order not found",
+  },
+
+  INVALID_ORDER_DATA: {
+    errorCode: "INVALID_ORDER_DATA",
+    statusCode: 400,
+    message: "Valid user, total, and delivery address are required",
+  },
+
+  INVALID_ORDER_STATUS: {
+    errorCode: "INVALID_ORDER_STATUS",
+    statusCode: 400,
+    message: "Invalid order status",
+  },
+
+  INVALID_ORDER_TRANSITION: {
+    errorCode: "INVALID_ORDER_TRANSITION",
+    statusCode: 409,
+    message: "Invalid order status transition",
   },
 
   ROUTE_NOT_FOUND: {

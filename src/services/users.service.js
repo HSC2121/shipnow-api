@@ -27,6 +27,20 @@ export class UsersService {
   }
 
   async createUser(userData) {
+    if (
+      !userData ||
+      typeof userData.firstName !== "string" ||
+      !userData.firstName.trim() ||
+      typeof userData.lastName !== "string" ||
+      !userData.lastName.trim() ||
+      typeof userData.email !== "string" ||
+      !userData.email.trim()
+    ) {
+      throw new AppError(
+        ERROR_DICTIONARY.INVALID_USER_DATA
+      );
+    }
+
     const normalizedEmail = userData.email.trim().toLowerCase();
 
     const existingUser =
@@ -40,11 +54,11 @@ export class UsersService {
 
     const user = await usersRepository.create({
       ...userData,
-      email: normalizedEmail
+      email: normalizedEmail,
     });
 
     logger.info("User created successfully", {
-      userId: user._id.toString()
+      userId: user._id.toString(),
     });
 
     return user;
@@ -85,7 +99,7 @@ export class UsersService {
     );
 
     logger.info("User updated successfully", {
-      userId: id
+      userId: id,
     });
 
     return updatedUser;

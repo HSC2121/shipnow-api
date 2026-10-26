@@ -1,9 +1,11 @@
+
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpecs } from "./docs/swagger.config.js";
 
 import productsRouter from "./routes/products.routes.js";
 import usersRouter from "./routes/users.routes.js";
+import ordersRouter from "./routes/orders.routes.js";
 import mocksRouter from "./routes/mocks.routes.js";
 import loggerRouter from "./routes/logger.routes.js";
 
@@ -18,6 +20,7 @@ app.use(express.json());
 // API routes
 app.use("/api/products", productsRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/orders", ordersRouter);
 app.use("/api/mocks", mocksRouter);
 app.use("/api/logger", loggerRouter);
 

@@ -7,27 +7,46 @@ The project follows a layered architecture that separates HTTP handling, busines
 ## Tech Stack
 
 - Node.js
+
 - Express.js
+
 - MongoDB
+
 - Mongoose
+
 - dotenv
+
 - Faker
+
 - Nodemon
+
 - Winston
+
 - winston-daily-rotate-file
+
 - swagger-jsdoc
+
 - swagger-ui-express
+- Mocha
+- Chai
+- Supertest
 
 ## Architecture
 
 The application follows this dependency flow:
 
 ```text
+
 Route → Controller → Service → Repository → Model → MongoDB
+
                        ↓
+
                   AppError
+
                        ↓
+
              Global Error Middleware
+
 ```
 
 ### Routes
@@ -51,14 +70,23 @@ Contain the application's business logic.
 Examples include:
 
 - Determining product availability based on stock
+
 - Preventing negative product prices or stock
+
 - Normalizing user email addresses
+
 - Preventing duplicate email registrations
+
 - Validating MongoDB resource IDs
+
 - Generating simulated test data
+
 - Validating mock data quantities
+
 - Coordinating relationships between generated users, orders, deliveries, and drivers
+
 - Handling resources that do not exist
+
 - Converting expected domain failures into controlled `AppError` instances
 
 ### Repositories
@@ -78,9 +106,13 @@ Define the MongoDB schemas, relationships, and validation rules for application 
 The application currently includes models for:
 
 - Users
+
 - Products
+
 - Drivers
+
 - Orders
+
 - Deliveries
 
 ### Error Layer
@@ -88,7 +120,9 @@ The application currently includes models for:
 Application errors are centralized through three components:
 
 - `AppError` represents controlled application and domain errors.
+
 - `ERROR_DICTIONARY` centralizes error codes, HTTP status codes, and public messages.
+
 - `errorHandler` is the global Express middleware responsible for producing the final error response.
 
 This keeps error responses consistent and prevents business logic from manually formatting HTTP errors.
@@ -96,50 +130,100 @@ This keeps error responses consistent and prevents business logic from manually 
 ## Project Structure
 
 ```text
+
 src/
+
 ├── config/
+
 │   ├── database.config.js
+
 │   ├── env.config.js
+
 │   └── logger.config.js
+
 ├── constants/
+
 │   └── index.js
+
 ├── controllers/
+
+│   ├── orders.controller.js
 │   ├── mocks.controller.js
+
 │   ├── products.controller.js
+
 │   └── users.controller.js
+
 ├── docs/
+
 │   ├── swagger.config.js
+
+│   ├── orders.yaml
 │   ├── schemas.yaml
+
 │   ├── users.yaml
+
 │   ├── products.yaml
+
 │   ├── mocks.yaml
+
 │   └── logger.yaml
+
 ├── errors/
+
 │   ├── app.error.js
+
 │   └── error.dictionary.js
+
 ├── middlewares/
+
 │   └── error.middleware.js
+
 ├── models/
+
 │   ├── delivery.model.js
+
 │   ├── driver.model.js
+
 │   ├── order.model.js
+
 │   ├── product.model.js
+
 │   └── user.model.js
+
 ├── repositories/
+
+│   ├── orders.repository.js
 │   ├── mocks.repository.js
+
 │   ├── products.repository.js
+
 │   └── users.repository.js
+
 ├── routes/
+
+│   ├── orders.routes.js
 │   ├── logger.routes.js
+
 │   ├── mocks.routes.js
+
 │   ├── products.routes.js
+
 │   └── users.routes.js
+
 ├── services/
+
+│   ├── orders.service.js
 │   ├── mocks.service.js
+
 │   ├── products.service.js
+
 │   └── users.service.js
+
 ├── app.js
+
 └── server.js
+
 ```
 
 ## Environment Configuration
@@ -149,14 +233,18 @@ Environment variables are loaded and validated through a centralized configurati
 Required variables:
 
 ```env
+
 PORT=
+
 MONGODB_URI=
+
 NODE_ENV=
+
 ```
 
 If a required environment variable is missing, the application stops during startup with a descriptive error.
 
-The `.env` file is excluded from version control.
+The `.env` and `.env.test` files should be excluded from version control.
 
 Use `.env.example` as a template for local configuration.
 
@@ -165,68 +253,84 @@ Use `.env.example` as a template for local configuration.
 Clone the repository and install the dependencies:
 
 ```bash
+
 npm install
+
 ```
 
 Create a `.env` file based on `.env.example`:
 
 ```env
+
 PORT=8080
+
 MONGODB_URI=mongodb://localhost:27017/shipnow
+
 NODE_ENV=development
+
 ```
 
 Make sure MongoDB is running locally, then start the development server:
 
 ```bash
+
 npm run dev
+
 ```
 
 The API will be available at:
 
 ```text
+
 http://localhost:8080
+
 ```
 
 ## Interactive API Documentation (Swagger / OpenAPI)
 
-ShipNow provides interactive documentation using **OpenAPI 3.0**, **swagger-jsdoc**, and **swagger-ui-express**. The Swagger configuration is kept separate from route logic in `src/docs/swagger.config.js`; endpoint descriptions and reusable schemas are defined in YAML files under `src/docs/`.
+ShipNow provides interactive documentation using ****OpenAPI 3.0****, ****swagger-jsdoc****, and ****swagger-ui-express****. The Swagger configuration is kept separate from route logic in `src/docs/swagger.config.js`; endpoint descriptions and reusable schemas are defined in YAML files under `src/docs/`.
 
 With the server running, open:
 
 ```text
+
 http://localhost:8080/api/docs
+
 ```
 
-Swagger UI lets you inspect HTTP methods, paths, parameters, JSON request bodies, successful responses, and documented error responses. Use **Try it out → Execute** to send requests to your running local API.
+Swagger UI lets you inspect HTTP methods, paths, parameters, JSON request bodies, successful responses, and documented error responses. Use ****Try it out → Execute**** to send requests to your running local API.
 
 ### Documented Modules
 
-| Tag | Coverage |
+| Module | Coverage |
 | --- | --- |
 | Users | List, retrieve by ID, create, and update users |
 | Products | List, list available, retrieve by ID, create, and update products |
+| Orders | List, create, retrieve by ID, and update order status |
 | Mocks | Generate mock users, drivers, orders, and deliveries; seed the database |
-| Orders | Mock order generation (`GET /api/mocks/orders`) |
-| Deliveries | Mock delivery generation (`GET /api/mocks/deliveries`) |
 | Logger | Development-only logging validation (`GET /api/logger/test`) |
 
-There are **15 unique documented operations**. The Orders and Deliveries tags reuse their existing mock-generation operations; they do **not** represent separate Orders or Deliveries CRUD routes. Models exist for both entities, but dedicated CRUD endpoints have not been implemented.
+Order endpoints operate on persisted orders. Mock generation endpoints return simulated data and are separate from the Orders API. Deliveries have a data model and mock-generation endpoint; dedicated delivery CRUD routes are not implemented.
 
 ### Reusable Schemas
 
 OpenAPI components define eight reusable schemas: `User`, `Product`, `Driver`, `Order`, `OrderItem`, `Delivery`, `SuccessResponse`, and `ErrorResponse`. Endpoint definitions reference shared schemas using `$ref` where applicable.
 
-The documented errors include invalid resource IDs, missing resources, duplicate email addresses, invalid prices or stock, invalid mock quantities, database seeding failures, and internal server errors. Authentication endpoints and order/delivery status-transition endpoints are not currently implemented and are not presented as available API operations.
+The documented errors include invalid resource IDs, missing resources, duplicate email addresses, invalid prices or stock, invalid mock quantities, database seeding failures, and internal server errors. Authentication endpoints and delivery status-transition endpoints are not implemented. Order status updates are available at `PATCH /api/orders/:id/status`.
 
 ### Testing Notes
 
-1. Start MongoDB and run `npm run dev` with `NODE_ENV=development`.
-2. Open `http://localhost:8080/api/docs` and expand an endpoint.
-3. Select **Try it out**, enter any required values, then select **Execute**.
-4. For a read-only test, use `GET /api/mocks/users?qty=2`; try `qty=0` to verify the documented HTTP `400` error.
-5. `POST /api/mocks/seed` **writes records to MongoDB**; only execute it when you intend to create test data.
-6. `GET /api/logger/test` is a diagnostic endpoint, not a business feature. It works in development and returns HTTP `404` outside development.
+1\. Start MongoDB and run `npm run dev` with `NODE_ENV=development`.
+
+2\. Open `http://localhost:8080/api/docs` and expand an endpoint.
+
+3\. Select ****Try it out****, enter any required values, then select ****Execute****.
+
+4\. For a read-only test, use `GET /api/mocks/users?qty=2`; try `qty=0` to verify the documented HTTP `400` error.
+
+5\. `POST /api/mocks/seed` ****writes records to MongoDB****; only execute it when you intend to create test data.
+
+6\. `GET /api/logger/test` is a diagnostic endpoint, not a business feature. It works in development and returns HTTP `404` outside development.
 
 Changes to YAML documentation may require restarting the server before they appear in Swagger UI.
 
@@ -235,13 +339,17 @@ Changes to YAML documentation may require restarting the server before they appe
 ### Get all products
 
 ```http
+
 GET /api/products
+
 ```
 
 ### Get available products
 
 ```http
+
 GET /api/products/available
+
 ```
 
 Returns products that are available and have stock greater than zero.
@@ -249,24 +357,35 @@ Returns products that are available and have stock greater than zero.
 ### Get product by ID
 
 ```http
+
 GET /api/products/:id
+
 ```
 
 ### Create product
 
 ```http
+
 POST /api/products
+
 ```
 
 Example body:
 
 ```json
+
 {
+
   "name": "Wireless Headphones",
+
   "description": "Noise-cancelling Bluetooth headphones",
+
   "price": 120,
+
   "stock": 15
+
 }
+
 ```
 
 Product status is determined automatically from stock.
@@ -274,15 +393,21 @@ Product status is determined automatically from stock.
 ### Update product
 
 ```http
+
 PUT /api/products/:id
+
 ```
 
 Example body:
 
 ```json
+
 {
+
   "stock": 0
+
 }
+
 ```
 
 Setting stock to `0` automatically changes the product status to `out_of_stock`.
@@ -292,29 +417,41 @@ Setting stock to `0` automatically changes the product status to `out_of_stock`.
 ### Get all users
 
 ```http
+
 GET /api/users
+
 ```
 
 ### Get user by ID
 
 ```http
+
 GET /api/users/:id
+
 ```
 
 ### Create user
 
 ```http
+
 POST /api/users
+
 ```
 
 Example body:
 
 ```json
+
 {
+
   "firstName": "John",
+
   "lastName": "Doe",
+
   "email": "john.doe@example.com"
+
 }
+
 ```
 
 New users receive the `user` role by default.
@@ -324,19 +461,79 @@ Email addresses are normalized before being stored.
 ### Update user
 
 ```http
+
 PUT /api/users/:id
+
 ```
 
 Example body:
 
 ```json
+
 {
+
   "firstName": "Johnny",
+
   "email": "johnny.doe@example.com"
+
 }
+
 ```
 
 Duplicate email addresses are rejected with HTTP `409 Conflict`.
+
+## Order Endpoints
+
+Orders are persisted in MongoDB and reference existing users. Supported statuses are `pending`, `confirmed`, `in_transit`, `delivered`, and `cancelled`; priorities are `low`, `normal`, and `high`.
+
+### List orders
+
+```http
+GET /api/orders
+```
+
+### Create an order
+
+```http
+POST /api/orders
+```
+
+Example request body (replace the user ID with an existing user's MongoDB `_id`):
+
+```json
+{
+  "user": "000000000000000000000001",
+  "total": 125.50,
+  "deliveryAddress": "123 Main Street",
+  "priority": "normal"
+}
+```
+
+A valid existing user, nonnegative total, and delivery address are required. New orders default to `pending` status unless a valid initial status is supplied.
+
+### Retrieve an order
+
+```http
+GET /api/orders/:id
+```
+
+### Update order status
+
+```http
+PATCH /api/orders/:id/status
+```
+
+Example request body:
+
+```json
+{
+  "status": "confirmed"
+}
+```
+
+Allowed transitions are `pending` → `confirmed` or `cancelled`; `confirmed` → `in_transit` or `cancelled`; and `in_transit` → `delivered` or `cancelled`. `delivered` and `cancelled` are terminal states.
+
+Invalid IDs, missing orders, invalid statuses, and disallowed transitions return standardized errors (including HTTP `400`, `404`, and `409` as appropriate).
 
 ## Mock Data Endpoints
 
@@ -349,7 +546,9 @@ The quantity is controlled through the `qty` query parameter. Valid quantities a
 ### Generate mock users
 
 ```http
+
 GET /api/mocks/users?qty=2
+
 ```
 
 Generates users in memory without saving them to MongoDB.
@@ -357,7 +556,9 @@ Generates users in memory without saving them to MongoDB.
 ### Generate mock drivers
 
 ```http
+
 GET /api/mocks/drivers?qty=2
+
 ```
 
 Generates drivers with the `driver` role, vehicle information, and availability status.
@@ -367,7 +568,9 @@ The generated records are not saved to MongoDB.
 ### Generate mock orders
 
 ```http
+
 GET /api/mocks/orders?qty=2
+
 ```
 
 Generates orders with valid statuses, priorities, totals, and delivery addresses.
@@ -377,7 +580,9 @@ The generated records are not saved to MongoDB.
 ### Generate mock deliveries
 
 ```http
+
 GET /api/mocks/deliveries?qty=2
+
 ```
 
 Generates deliveries with valid delivery statuses and estimated delivery dates.
@@ -387,7 +592,9 @@ The generated records are not saved to MongoDB.
 ### Seed test data
 
 ```http
+
 POST /api/mocks/seed?qty=10
+
 ```
 
 Generates and inserts related test records into MongoDB.
@@ -395,14 +602,19 @@ Generates and inserts related test records into MongoDB.
 For each requested quantity, the seed operation creates:
 
 - Users
+
 - Drivers
+
 - Orders
+
 - Deliveries
 
 The records are inserted in the required order so real MongoDB references can be established.
 
 ```text
+
 User → Order → Delivery ← Driver
+
 ```
 
 Orders reference generated users.
@@ -412,15 +624,25 @@ Deliveries reference generated orders and drivers.
 Example response:
 
 ```json
+
 {
+
   "status": "success",
+
   "inserted": {
+
     "users": 10,
+
     "drivers": 10,
+
     "orders": 10,
+
     "deliveries": 10
+
   }
+
 }
+
 ```
 
 Unlike the mock `GET` endpoints, the seed endpoint persists the generated records in MongoDB.
@@ -434,43 +656,65 @@ Application roles, product statuses, order statuses, order priorities, and deliv
 User roles:
 
 ```text
+
 ADMIN
+
 USER
+
 DRIVER
+
 ```
 
 Product statuses:
 
 ```text
+
 AVAILABLE
+
 OUT_OF_STOCK
+
 ```
 
 Order statuses:
 
 ```text
+
 PENDING
+
 CONFIRMED
+
 IN_TRANSIT
+
 DELIVERED
+
 CANCELLED
+
 ```
 
 Order priorities:
 
 ```text
+
 LOW
+
 NORMAL
+
 HIGH
+
 ```
 
 Delivery statuses:
 
 ```text
+
 PENDING
+
 ASSIGNED
+
 IN_TRANSIT
+
 DELIVERED
+
 ```
 
 This avoids scattering magic strings throughout the application and ensures generated test data follows the same domain rules as persisted application data.
@@ -480,14 +724,19 @@ This avoids scattering magic strings throughout the application and ensures gene
 Orders reference the user who created them:
 
 ```text
+
 Order.user → User._id
+
 ```
 
 Deliveries reference an order and an assigned driver:
 
 ```text
+
 Delivery.order → Order._id
+
 Delivery.driver → Driver._id
+
 ```
 
 During test-data seeding, users and drivers are inserted first. Their MongoDB IDs are then used when creating orders and deliveries, ensuring that generated relationships reference real persisted records.
@@ -499,27 +748,41 @@ Mock generation accepts between `1` and `100` records per request.
 Valid example:
 
 ```http
+
 GET /api/mocks/users?qty=20
+
 ```
 
 Invalid quantities such as:
 
 ```text
+
 qty=0
+
 qty=-5
+
 qty=abc
+
 qty=101
+
 ```
 
 return HTTP `400 Bad Request` using the centralized error format:
 
 ```json
+
 {
+
   "status": "error",
+
   "errorCode": "INVALID_MOCK_QUANTITY",
+
   "statusCode": 400,
+
   "message": "Quantity must be an integer between 1 and 100"
+
 }
+
 ```
 
 ## Centralized Error Handling
@@ -531,15 +794,21 @@ Business and validation errors are represented by the custom `AppError` class.
 Instead of creating isolated errors such as:
 
 ```js
+
 const error = new Error("Product not found");
+
 error.statusCode = 404;
+
 throw error;
+
 ```
 
 Services use the centralized error dictionary:
 
 ```js
+
 throw new AppError(ERROR_DICTIONARY.PRODUCT_NOT_FOUND);
+
 ```
 
 The error dictionary defines the public error code, HTTP status code, and message in one place.
@@ -549,23 +818,37 @@ The global error middleware is registered after the application routes and is re
 The standard error structure is:
 
 ```json
+
 {
+
   "status": "error",
+
   "errorCode": "PRODUCT_NOT_FOUND",
+
   "statusCode": 404,
+
   "message": "Product not found"
+
 }
+
 ```
 
 Unexpected errors are not exposed directly to clients. They return a generic response:
 
 ```json
+
 {
+
   "status": "error",
+
   "errorCode": "INTERNAL_SERVER_ERROR",
+
   "statusCode": 500,
+
   "message": "Internal server error"
+
 }
+
 ```
 
 Technical error information remains available in server-side Winston logs for debugging.
@@ -575,15 +858,30 @@ Technical error information remains available in server-side Winston logs for de
 Current controlled errors include:
 
 ```text
+
+INVALID_USER_DATA         → 400 Bad Request
 USER_NOT_FOUND            → 404 Not Found
+
 EMAIL_ALREADY_REGISTERED  → 409 Conflict
+
 PRODUCT_NOT_FOUND         → 404 Not Found
+
 INVALID_ID                → 400 Bad Request
+
 INVALID_PRICE             → 400 Bad Request
+
 INVALID_STOCK             → 400 Bad Request
+
 INVALID_MOCK_QUANTITY     → 400 Bad Request
+
 MOCK_SEED_FAILED          → 500 Internal Server Error
+ORDER_NOT_FOUND           → 404 Not Found
+INVALID_ORDER_DATA        → 400 Bad Request
+INVALID_ORDER_STATUS      → 400 Bad Request
+INVALID_ORDER_TRANSITION  → 409 Conflict
+
 ROUTE_NOT_FOUND           → 404 Not Found
+
 ```
 
 ### Invalid Resource IDs
@@ -593,18 +891,27 @@ MongoDB resource IDs are validated before they reach repository queries.
 For example:
 
 ```http
+
 GET /api/products/abc
+
 ```
 
 returns:
 
 ```json
+
 {
+
   "status": "error",
+
   "errorCode": "INVALID_ID",
+
   "statusCode": 400,
+
   "message": "Invalid resource ID"
+
 }
+
 ```
 
 A correctly formatted MongoDB ObjectId that does not reference an existing resource instead returns the corresponding `404` domain error.
@@ -612,19 +919,70 @@ A correctly formatted MongoDB ObjectId that does not reference an existing resou
 Example:
 
 ```http
+
 GET /api/products/000000000000000000000000
+
 ```
 
 Response:
 
 ```json
+
 {
+
   "status": "error",
+
   "errorCode": "PRODUCT_NOT_FOUND",
+
   "statusCode": 404,
+
   "message": "Product not found"
+
 }
+
 ```
+
+## Automated Functional Testing
+
+The project uses **Mocha** as the test runner, **Chai** for assertions, and **Supertest** for HTTP integration testing against the exported Express application (`src/app.js`). The application is exported separately from `src/server.js`, so tests do not need to start an HTTP listener.
+
+### Test environment
+
+Run a local MongoDB instance and create a `.env.test` file with:
+
+```env
+NODE_ENV=test
+PORT=8081
+MONGODB_URI=mongodb://127.0.0.1:27017/shipnow_test
+```
+
+The test setup checks that `NODE_ENV=test` and the database path is `/shipnow_test` before connecting. The `beforeEach` hook **deletes all documents in every collection of `shipnow_test`** to isolate test cases; do not put valuable data in this database. The normal development database (`shipnow`) is separate and is not cleared by these tests.
+
+### Run tests
+
+```bash
+npm install
+npm test
+```
+
+The `npm test` script sets `NODE_ENV=test` and runs all `tests/**/*.test.js` files with Mocha. MongoDB must be running before executing the suite.
+
+### Test suite
+
+| Suite | Tests | Main checks |
+| --- | ---: | --- |
+| Users | 7 | List, creation, validation, duplicate email, invalid/missing IDs, unknown route |
+| Orders | 12 | List, create, retrieve, status update, validation, missing resources, invalid transitions |
+| Mocks | 15 | Generated data structures, default/custom quantities, invalid quantities, database seeding |
+| Logger | 3 | Test environment isolation and development-only endpoint restriction |
+| Swagger | 5 | Swagger UI, OpenAPI version, paths, reusable schemas, documented error responses |
+| **Total** | **42** | **All passing in the latest local run** |
+
+Tests assert HTTP status codes, success response shapes, selected data types, and standardized error payloads. Seeded mock data is stored only in the isolated test database during automated tests.
+
+The logger diagnostic endpoint is intentionally unavailable under `NODE_ENV=test` and returns HTTP `404`. To manually exercise all six log levels, start the application in development mode and request `GET /api/logger/test`.
+
+The suite covers the endpoints listed above; it is **not a measured line/branch coverage percentage**, and product endpoints are not yet included in this automated test suite.
 
 ## Testing Error Cases
 
@@ -633,111 +991,161 @@ The centralized error layer can be tested with the following requests.
 ### Invalid mock quantity
 
 ```http
+
 GET /api/mocks/users?qty=0
+
 GET /api/mocks/users?qty=-5
+
 GET /api/mocks/users?qty=abc
+
 GET /api/mocks/users?qty=101
+
 ```
 
 Expected status:
 
 ```text
+
 400 Bad Request
+
 ```
 
 Expected error code:
 
 ```text
+
 INVALID_MOCK_QUANTITY
+
 ```
 
 ### Invalid product price
 
 ```http
+
 POST /api/products
+
 ```
 
 ```json
+
 {
+
   "name": "Test Product",
+
   "description": "Testing centralized error handling",
+
   "price": -50,
+
   "stock": 10
+
 }
+
 ```
 
 Expected:
 
 ```text
+
 400 Bad Request
+
 INVALID_PRICE
+
 ```
 
 ### Invalid product stock
 
 ```http
+
 POST /api/products
+
 ```
 
 ```json
+
 {
+
   "name": "Test Product",
+
   "description": "Testing negative stock",
+
   "price": 50,
+
   "stock": -10
+
 }
+
 ```
 
 Expected:
 
 ```text
+
 400 Bad Request
+
 INVALID_STOCK
+
 ```
 
 ### Product not found
 
 ```http
+
 GET /api/products/000000000000000000000000
+
 ```
 
 Expected:
 
 ```text
+
 404 Not Found
+
 PRODUCT_NOT_FOUND
+
 ```
 
 ### User not found
 
 ```http
+
 GET /api/users/000000000000000000000000
+
 ```
 
 Expected:
 
 ```text
+
 404 Not Found
+
 USER_NOT_FOUND
+
 ```
 
 ### Invalid resource ID
 
 ```http
+
 GET /api/products/abc
+
 ```
 
 or:
 
 ```http
+
 GET /api/users/abc
+
 ```
 
 Expected:
 
 ```text
+
 400 Bad Request
+
 INVALID_ID
+
 ```
 
 ### Duplicate email
@@ -747,8 +1155,11 @@ Create a user with an email address that already exists.
 Expected:
 
 ```text
+
 409 Conflict
+
 EMAIL_ALREADY_REGISTERED
+
 ```
 
 ### Mock seed failure
@@ -756,39 +1167,54 @@ EMAIL_ALREADY_REGISTERED
 Failures during MongoDB persistence are converted into:
 
 ```json
+
 {
+
   "status": "error",
+
   "errorCode": "MOCK_SEED_FAILED",
+
   "statusCode": 500,
+
   "message": "Failed to seed mock data"
+
 }
+
 ```
 
 The underlying database error is not exposed to the client.
 
 ## Logging and Monitoring
 
-ShipNow uses **Winston** for structured application logging instead of `console.log`. The centralized configuration lives in `src/config/logger.config.js`.
+ShipNow uses ****Winston**** for structured application logging instead of `console.log`. The centralized configuration lives in `src/config/logger.config.js`.
 
 ### Custom Log Levels
 
 The logger defines six levels, ordered from highest to lowest severity:
 
 | Level     | Priority | Example use                                                                             |
+
 | --------- | -------: | --------------------------------------------------------------------------------------- |
+
 | `fatal`   |        0 | Critical startup or database connection failure                                         |
+
 | `error`   |        1 | Unexpected server errors, 5xx errors, or failed database seeding                        |
+
 | `warning` |        2 | Expected client errors such as invalid quantities, duplicate emails, and missing routes |
+
 | `info`    |        3 | Server startup, MongoDB connection, successful resource changes, and seed completion    |
+
 | `http`    |        4 | HTTP-related diagnostic events                                                          |
+
 | `debug`   |        5 | Detailed mock-data generation activity                                                  |
 
 These are custom Winston levels. They are not HTTP response status codes.
 
 ### Environment Behavior
 
-- **Development** (`NODE_ENV=development`): logs `debug` and all more severe levels to the console.
-- **Production** (`NODE_ENV=production`): logs `info` and all more severe levels to the console. `debug` and `http` are filtered out.
+- ****Development**** (`NODE_ENV=development`): logs `debug` and all more severe levels to the console.
+
+- ****Production**** (`NODE_ENV=production`): logs `info` and all more severe levels to the console. `debug` and `http` are filtered out.
 
 Console messages include timestamps, levels, and contextual metadata. File entries use JSON formatting.
 
@@ -797,10 +1223,12 @@ Console messages include timestamps, levels, and contextual metadata. File entri
 Only `error` and `fatal` events are persisted to rotating files:
 
 ```text
+
 logs/error-YYYY-MM-DD.log
+
 ```
 
-Rotation uses `winston-daily-rotate-file` with a daily filename, a **10 MB** maximum file size, and **14-day** retention. The `logs/` directory is excluded from Git through `.gitignore`.
+Rotation uses `winston-daily-rotate-file` with a daily filename, a ****10 MB**** maximum file size, and ****14-day**** retention. The `logs/` directory is excluded from Git through `.gitignore`.
 
 Expected application errors (4xx) are logged as `warning`. Server errors (5xx) are logged as `error`, with stack information where available. Critical connection/startup failures use `fatal`.
 
@@ -809,29 +1237,37 @@ Expected application errors (4xx) are logged as `warning`. Server errors (5xx) a
 Start the development server:
 
 ```bash
+
 npm run dev
+
 ```
 
 Then run:
 
 ```bash
+
 curl -i http://localhost:8080/api/logger/test
+
 ```
 
 The endpoint returns HTTP `200` and emits one sample message for each of the six custom levels. All six appear in the development console; only the `error` and `fatal` samples are written to the rotating log file.
 
-The logger test endpoint is **development-only**. In production it returns HTTP `404` and does not emit the six test messages.
+The logger test endpoint is ****development-only****. In production it returns HTTP `404` and does not emit the six test messages.
 
 To inspect today's error file:
 
 ```bash
+
 cat logs/error-$(date +%Y-%m-%d).log
+
 ```
 
 To check the centralized error logging, request an invalid mock quantity:
 
 ```bash
+
 curl -i "http://localhost:8080/api/mocks/users?qty=0"
+
 ```
 
 Expected result: HTTP `400` with `INVALID_MOCK_QUANTITY`, plus a `warning` console entry containing the request method, path, and status code.
@@ -840,23 +1276,23 @@ Expected result: HTTP `400` with `INVALID_MOCK_QUANTITY`, plus a `warning` conso
 
 Logging is integrated into server startup, MongoDB connection, global error handling, mock generation and seeding, and user/product creation and updates. Unknown routes are handled as controlled `ROUTE_NOT_FOUND` errors.
 
-This project does not expose an order-creation endpoint, so no order-creation log event is claimed.
+Order creation and status updates also produce structured application log events.
 
 ## Service vs Repository
 
 The Service and Repository layers have intentionally different responsibilities.
 
-The **Service layer** answers:
+The ****Service layer**** answers:
 
-> What business rules should the application enforce?
+\> What business rules should the application enforce?
 
 For example, a product with zero stock becomes unavailable, two users cannot register the same email address, resource IDs must be valid, and mock quantities must remain within the allowed range.
 
 The mock Service also coordinates how generated entities relate to each other and converts persistence failures into controlled application errors.
 
-The **Repository layer** answers:
+The ****Repository layer**** answers:
 
-> How should the application read or write this data?
+\> How should the application read or write this data?
 
 For example, it performs Mongoose queries, applies database filters and projections, sorts results, persists updates, and performs bulk insertion of generated test records.
 
