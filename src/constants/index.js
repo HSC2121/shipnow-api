@@ -29,3 +29,19 @@ export const DELIVERY_STATUS = Object.freeze({
   IN_TRANSIT: "in_transit",
   DELIVERED: "delivered"
 });
+
+export const DOCUMENT_TYPES = Object.freeze({
+  IDENTITY: "identity",
+  PASSPORT: "passport",
+  ADDRESS: "address",
+  DELIVERY_PROOF: "delivery_proof",
+  DRIVER_LICENSE: "driver_license",
+});
+
+export const ALLOWED_UPLOAD_MIME_TYPES = Object.freeze([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+]);
+
+export const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;

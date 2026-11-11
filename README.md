@@ -30,6 +30,8 @@ The project follows a layered architecture that separates HTTP handling, busines
 - Mocha
 - Chai
 - Supertest
+- Multer
+- file-type
 
 ## Architecture
 
@@ -114,6 +116,7 @@ The application currently includes models for:
 - Orders
 
 - Deliveries
+- Reusable uploaded-file metadata subdocuments
 
 ### Error Layer
 
@@ -139,7 +142,8 @@ src/
 
 │   ├── env.config.js
 
-│   └── logger.config.js
+│   ├── logger.config.js
+│   └── multer.config.js
 
 ├── constants/
 
@@ -152,7 +156,8 @@ src/
 
 │   ├── products.controller.js
 
-│   └── users.controller.js
+│   ├── users.controller.js
+│   └── uploads.controller.js
 
 ├── docs/
 
@@ -167,7 +172,8 @@ src/
 
 │   ├── mocks.yaml
 
-│   └── logger.yaml
+│   ├── logger.yaml
+│   └── uploads.yaml
 
 ├── errors/
 
@@ -177,7 +183,8 @@ src/
 
 ├── middlewares/
 
-│   └── error.middleware.js
+│   ├── error.middleware.js
+│   └── upload.middleware.js
 
 ├── models/
 
@@ -189,7 +196,8 @@ src/
 
 │   ├── product.model.js
 
-│   └── user.model.js
+│   ├── user.model.js
+│   └── file-metadata.schema.js
 
 ├── repositories/
 
@@ -198,7 +206,8 @@ src/
 
 │   ├── products.repository.js
 
-│   └── users.repository.js
+│   ├── users.repository.js
+│   └── uploads.repository.js
 
 ├── routes/
 
@@ -209,7 +218,8 @@ src/
 
 │   ├── products.routes.js
 
-│   └── users.routes.js
+│   ├── users.routes.js
+│   └── drivers.routes.js
 
 ├── services/
 
@@ -218,7 +228,8 @@ src/
 
 │   ├── products.service.js
 
-│   └── users.service.js
+│   ├── users.service.js
+│   └── uploads.service.js
 
 ├── app.js
 
@@ -288,7 +299,7 @@ http://localhost:8080
 
 ## Interactive API Documentation (Swagger / OpenAPI)
 
-ShipNow provides interactive documentation using ****OpenAPI 3.0****, ****swagger-jsdoc****, and ****swagger-ui-express****. The Swagger configuration is kept separate from route logic in `src/docs/swagger.config.js`; endpoint descriptions and reusable schemas are defined in YAML files under `src/docs/`.
+ShipNow provides interactive documentation using **OpenAPI 3.0**, **swagger-jsdoc**, and **swagger-ui-express**. The Swagger configuration is kept separate from route logic in `src/docs/swagger.config.js`; endpoint descriptions and reusable schemas are defined in YAML files under `src/docs/`.
 
 With the server running, open:
 
@@ -298,7 +309,7 @@ http://localhost:8080/api/docs
 
 ```
 
-Swagger UI lets you inspect HTTP methods, paths, parameters, JSON request bodies, successful responses, and documented error responses. Use ****Try it out → Execute**** to send requests to your running local API.
+Swagger UI lets you inspect HTTP methods, paths, parameters, JSON request bodies, successful responses, and documented error responses. Use **Try it out → Execute** to send requests to your running local API.
 
 ### Documented Modules
 
@@ -309,12 +320,13 @@ Swagger UI lets you inspect HTTP methods, paths, parameters, JSON request bodies
 | Orders | List, create, retrieve by ID, and update order status |
 | Mocks | Generate mock users, drivers, orders, and deliveries; seed the database |
 | Logger | Development-only logging validation (`GET /api/logger/test`) |
+| Uploads | User documents, order delivery proofs, driver licenses |
 
 Order endpoints operate on persisted orders. Mock generation endpoints return simulated data and are separate from the Orders API. Deliveries have a data model and mock-generation endpoint; dedicated delivery CRUD routes are not implemented.
 
 ### Reusable Schemas
 
-OpenAPI components define eight reusable schemas: `User`, `Product`, `Driver`, `Order`, `OrderItem`, `Delivery`, `SuccessResponse`, and `ErrorResponse`. Endpoint definitions reference shared schemas using `$ref` where applicable.
+The existing OpenAPI components define reusable schemas including: `User`, `Product`, `Driver`, `Order`, `OrderItem`, `Delivery`, `SuccessResponse`, and `ErrorResponse`. Endpoint definitions reference shared schemas using `$ref` where applicable.
 
 The documented errors include invalid resource IDs, missing resources, duplicate email addresses, invalid prices or stock, invalid mock quantities, database seeding failures, and internal server errors. Authentication endpoints and delivery status-transition endpoints are not implemented. Order status updates are available at `PATCH /api/orders/:id/status`.
 
@@ -324,11 +336,11 @@ The documented errors include invalid resource IDs, missing resources, duplicate
 
 2\. Open `http://localhost:8080/api/docs` and expand an endpoint.
 
-3\. Select ****Try it out****, enter any required values, then select ****Execute****.
+3\. Select **Try it out**, enter any required values, then select **Execute**.
 
 4\. For a read-only test, use `GET /api/mocks/users?qty=2`; try `qty=0` to verify the documented HTTP `400` error.
 
-5\. `POST /api/mocks/seed` ****writes records to MongoDB****; only execute it when you intend to create test data.
+5\. `POST /api/mocks/seed` **writes records to MongoDB**; only execute it when you intend to create test data.
 
 6\. `GET /api/logger/test` is a diagnostic endpoint, not a business feature. It works in development and returns HTTP `404` outside development.
 
@@ -855,7 +867,7 @@ Technical error information remains available in server-side Winston logs for de
 
 ### Error Dictionary
 
-Current controlled errors include:
+Controlled errors include (in addition to the upload-specific errors documented below):
 
 ```text
 
@@ -976,7 +988,9 @@ The `npm test` script sets `NODE_ENV=test` and runs all `tests/**/*.test.js` fil
 | Mocks | 15 | Generated data structures, default/custom quantities, invalid quantities, database seeding |
 | Logger | 3 | Test environment isolation and development-only endpoint restriction |
 | Swagger | 5 | Swagger UI, OpenAPI version, paths, reusable schemas, documented error responses |
-| **Total** | **42** | **All passing in the latest local run** |
+| Uploads API | 14 | File uploads, validation, cleanup, license replacement |
+| Uploads Swagger | 3 | Multipart upload schemas and documented responses |
+| **Total** | **59** | **All passing in the latest local run** |
 
 Tests assert HTTP status codes, success response shapes, selected data types, and standardized error payloads. Seeded mock data is stored only in the isolated test database during automated tests.
 
@@ -998,302 +1012,173 @@ GET /api/mocks/users?qty=-5
 
 GET /api/mocks/users?qty=abc
 
-GET /api/mocks/users?qty=101
+## File Uploads — Module 7
 
-```
+Module 7 adds multipart file uploads through **Multer** and verifies the actual file signature with **file-type**. Files are stored on the local filesystem; structured metadata is persisted on the related MongoDB document.
 
-Expected status:
+### Endpoints and multipart fields
 
-```text
+| Method | Endpoint | Required file field | Other required field | Stored on |
+| --- | --- | --- | --- | --- |
+| POST | `/api/users/:id/documents` | `document` | `documentType` | `User.documents[]` |
+| POST | `/api/orders/:id/proof` | `proof` | — | `Order.deliveryProofs[]` |
+| POST | `/api/drivers/:id/license` | `license` | — | `Driver.license` |
 
-400 Bad Request
+All three endpoints accept `multipart/form-data` and return **201 Created** after a successful upload. Replace the placeholder IDs in the examples below with IDs of existing MongoDB records.
 
-```
-
-Expected error code:
-
-```text
-
-INVALID_MOCK_QUANTITY
-
-```
-
-### Invalid product price
-
-```http
-
-POST /api/products
-
-```
-
-```json
-
-{
-
-  "name": "Test Product",
-
-  "description": "Testing centralized error handling",
-
-  "price": -50,
-
-  "stock": 10
-
-}
-
-```
-
-Expected:
-
-```text
-
-400 Bad Request
-
-INVALID_PRICE
-
-```
-
-### Invalid product stock
-
-```http
-
-POST /api/products
-
-```
-
-```json
-
-{
-
-  "name": "Test Product",
-
-  "description": "Testing negative stock",
-
-  "price": 50,
-
-  "stock": -10
-
-}
-
-```
-
-Expected:
-
-```text
-
-400 Bad Request
-
-INVALID_STOCK
-
-```
-
-### Product not found
-
-```http
-
-GET /api/products/000000000000000000000000
-
-```
-
-Expected:
-
-```text
-
-404 Not Found
-
-PRODUCT_NOT_FOUND
-
-```
-
-### User not found
-
-```http
-
-GET /api/users/000000000000000000000000
-
-```
-
-Expected:
-
-```text
-
-404 Not Found
-
-USER_NOT_FOUND
-
-```
-
-### Invalid resource ID
-
-```http
-
-GET /api/products/abc
-
-```
-
-or:
-
-```http
-
-GET /api/users/abc
-
-```
-
-Expected:
-
-```text
-
-400 Bad Request
-
-INVALID_ID
-
-```
-
-### Duplicate email
-
-Create a user with an email address that already exists.
-
-Expected:
-
-```text
-
-409 Conflict
-
-EMAIL_ALREADY_REGISTERED
-
-```
-
-### Mock seed failure
-
-Failures during MongoDB persistence are converted into:
-
-```json
-
-{
-
-  "status": "error",
-
-  "errorCode": "MOCK_SEED_FAILED",
-
-  "statusCode": 500,
-
-  "message": "Failed to seed mock data"
-
-}
-
-```
-
-The underlying database error is not exposed to the client.
-
-## Logging and Monitoring
-
-ShipNow uses ****Winston**** for structured application logging instead of `console.log`. The centralized configuration lives in `src/config/logger.config.js`.
-
-### Custom Log Levels
-
-The logger defines six levels, ordered from highest to lowest severity:
-
-| Level     | Priority | Example use                                                                             |
-
-| --------- | -------: | --------------------------------------------------------------------------------------- |
-
-| `fatal`   |        0 | Critical startup or database connection failure                                         |
-
-| `error`   |        1 | Unexpected server errors, 5xx errors, or failed database seeding                        |
-
-| `warning` |        2 | Expected client errors such as invalid quantities, duplicate emails, and missing routes |
-
-| `info`    |        3 | Server startup, MongoDB connection, successful resource changes, and seed completion    |
-
-| `http`    |        4 | HTTP-related diagnostic events                                                          |
-
-| `debug`   |        5 | Detailed mock-data generation activity                                                  |
-
-These are custom Winston levels. They are not HTTP response status codes.
-
-### Environment Behavior
-
-- ****Development**** (`NODE_ENV=development`): logs `debug` and all more severe levels to the console.
-
-- ****Production**** (`NODE_ENV=production`): logs `info` and all more severe levels to the console. `debug` and `http` are filtered out.
-
-Console messages include timestamps, levels, and contextual metadata. File entries use JSON formatting.
-
-### Rotating Error Files
-
-Only `error` and `fatal` events are persisted to rotating files:
-
-```text
-
-logs/error-YYYY-MM-DD.log
-
-```
-
-Rotation uses `winston-daily-rotate-file` with a daily filename, a ****10 MB**** maximum file size, and ****14-day**** retention. The `logs/` directory is excluded from Git through `.gitignore`.
-
-Expected application errors (4xx) are logged as `warning`. Server errors (5xx) are logged as `error`, with stack information where available. Critical connection/startup failures use `fatal`.
-
-### Test the Logger
-
-Start the development server:
+**Upload a user document**
 
 ```bash
-
-npm run dev
-
+curl -X POST http://localhost:8080/api/users/USER_ID/documents \
+  -F "documentType=identity" \
+  -F "document=@./identity.pdf"
 ```
 
-Then run:
+`documentType` must be one of `identity`, `passport`, or `address`. Each successful upload appends another document entry to the user.
+
+**Upload an order delivery proof**
 
 ```bash
-
-curl -i http://localhost:8080/api/logger/test
-
+curl -X POST http://localhost:8080/api/orders/ORDER_ID/proof \
+  -F "proof=@./delivery.png"
 ```
 
-The endpoint returns HTTP `200` and emits one sample message for each of the six custom levels. All six appear in the development console; only the `error` and `fatal` samples are written to the rotating log file.
+Each successful upload appends another entry to the order's `deliveryProofs` array.
 
-The logger test endpoint is ****development-only****. In production it returns HTTP `404` and does not emit the six test messages.
-
-To inspect today's error file:
+**Upload or replace a driver's license**
 
 ```bash
-
-cat logs/error-$(date +%Y-%m-%d).log
-
+curl -X POST http://localhost:8080/api/drivers/DRIVER_ID/license \
+  -F "license=@./license.pdf"
 ```
 
-To check the centralized error logging, request an invalid mock quantity:
+Each driver has one active license. A successful replacement updates the stored metadata and removes the previous license file. If the new upload is rejected, the existing license is preserved.
+
+### Storage and validation
+
+| Property | Behavior |
+| --- | --- |
+| File storage | Local disk |
+| User document directory | `uploads/documents/` |
+| Order proof directory | `uploads/proofs/` |
+| Driver license directory | `uploads/licenses/` |
+| Allowed MIME types | `application/pdf`, `image/jpeg`, `image/png` |
+| Maximum size | 5 MB (`5 * 1024 * 1024` bytes) |
+| Generated filename | Timestamp + random UUID + extension |
+| Content validation | `file-type` checks the file's detected MIME type against the declared MIME type |
+| Rejected uploads | Newly stored file is deleted |
+| Source control | `uploads/` must be ignored |
+
+Multer's initial MIME filter rejects unsupported declarations. The service then checks actual file contents, so a renamed or disguised file cannot pass solely by claiming to be a PDF or image. An uploaded file with an invalid resource ID, invalid document type, missing target entity, or failed persistence is also cleaned up.
+
+**Security scope:** This implementation checks file signatures and type/size limits; it is not antivirus scanning, user authorization, or cloud storage. The endpoints should not be treated as production-secure without additional access controls.
+
+### File metadata in MongoDB
+
+The reusable subdocument schema `src/models/file-metadata.schema.js` contains:
+
+| Field | Purpose |
+| --- | --- |
+| `originalName` | Original client filename |
+| `filename` | Generated disk filename |
+| `path` | File path relative to the application working directory |
+| `mimeType` | Uploaded MIME type, verified against detected content |
+| `size` | Size in bytes |
+| `documentType` | `identity`, `passport`, `address`, `delivery_proof`, or `driver_license` |
+| `uploadedAt` | Upload timestamp |
+
+User and order metadata is stored in arrays; a driver's active license is stored as one subdocument.
+
+### Implementation flow
+
+```text
+Route
+  → handleUpload(Multer middleware)
+  → UploadsController
+  → UploadsService
+       → validate ID, file, document category, and actual content
+       → find related entity
+       → construct metadata
+       → UploadsRepository
+       → MongoDB update
+       → clean up previous license (if replaced)
+  → 201 response
+```
+
+On failure, the service removes the newly uploaded file and passes a standardized error through the existing global error layer. Successful and failed upload events are logged through Winston.
+
+### Upload error codes
+
+| HTTP status | Error code | Meaning |
+| --- | --- | --- |
+| 400 | `FILE_REQUIRED` | No file was provided |
+| 400 | `INVALID_FILE_TYPE` | Unsupported, disguised, or invalid file |
+| 400 | `INVALID_FILE_FIELD` | Unexpected multipart file field or file count |
+| 400 | `INVALID_DOCUMENT_TYPE` | Invalid user document category |
+| 400 | `INVALID_ID` | Invalid MongoDB ObjectId |
+| 404 | `USER_NOT_FOUND` | User does not exist |
+| 404 | `ORDER_NOT_FOUND` | Order does not exist |
+| 404 | `DRIVER_NOT_FOUND` | Driver does not exist |
+| 413 | `FILE_TOO_LARGE` | File exceeds 5 MB |
+| 500 | `FILE_SAVE_FAILED` | Upload processing or metadata persistence failed |
+
+### Swagger and tests for uploads
+
+`src/docs/uploads.yaml` documents the three upload endpoints, multipart binary fields, required properties, successful responses, and error cases. With the server running, open `http://localhost:8080/api/docs`.
+
+`tests/uploads.test.js` contains **14 integration tests**, covering valid PDF/PNG uploads, persisted metadata, missing/invalid files, MIME spoofing, size limits, unexpected fields, nonexistent entities, rejected-file cleanup, successful license replacement, and preservation of the old license on rejected replacement.
+
+`tests/uploads.swagger.test.js` contains **3 tests** validating multipart schemas and documented responses.
+
+## Dependency Audit — Module 7
+
+The project was reviewed with:
 
 ```bash
-
-curl -i "http://localhost:8080/api/mocks/users?qty=0"
-
+npm audit
+npm audit fix --dry-run
 ```
 
-Expected result: HTTP `400` with `INVALID_MOCK_QUANTITY`, plus a `warning` console entry containing the request method, path, and status code.
+Compatible updates were then applied using `npm audit fix`, followed by a full test run. The reported vulnerabilities decreased from **11 to 7**. The latest audit still reported unresolved advisories, including one high-severity finding, in dependency chains involving tools such as Mocha, Swagger JSDoc, and Nodemon.
 
-### Logged Application Events
+These findings are **not resolved**. Further updates require reviewing the advisory details, dependency compatibility, and regression tests. Avoid `npm audit fix --force` without assessing breaking changes.
 
-Logging is integrated into server startup, MongoDB connection, global error handling, mock generation and seeding, and user/product creation and updates. Unknown routes are handled as controlled `ROUTE_NOT_FOUND` errors.
+## Course Progress and Scope
 
-Order creation and status updates also produce structured application log events.
+The Coderhouse Backend III reading material covers the following modules. The table distinguishes **implemented ShipNow work** from future coursework; it does not claim that every exercise in the reading material has been implemented.
 
-## Service vs Repository
+| Course module | Subject | ShipNow status |
+| --- | --- | --- |
+| 1 | Professional layered architecture, environment configuration, constants | Implemented |
+| 2 | Mocking and database seeding | Implemented |
+| 3 | Centralized errors and error middleware | Implemented |
+| 4 | Winston logging and rotating logs | Implemented |
+| 5 | OpenAPI / Swagger documentation | Implemented |
+| 6 | Functional testing with Mocha, Chai, and Supertest | Implemented |
+| 7 | Multer file uploads, validation, metadata persistence | Implemented and tested |
+| 8 | Performance, scalability, and Docker | Not yet implemented in this documented version |
+| 9 | Final production-ready API consolidation | Not yet completed |
 
-The Service and Repository layers have intentionally different responsibilities.
+The course also discusses authentication exercises, Docker deployment, production hardening, and additional checks. These should not be mistaken for implemented features. In particular, the current API does not claim completed authentication/authorization, dedicated delivery CRUD endpoints, a health-check endpoint, or a Docker setup.
 
-The ****Service layer**** answers:
+### Current verification and next steps
 
-\> What business rules should the application enforce?
+The latest confirmed local test suite contains **59 passing tests**:
 
-For example, a product with zero stock becomes unavailable, two users cannot register the same email address, resource IDs must be valid, and mock quantities must remain within the allowed range.
+- Users: 7
+- Orders: 12
+- Mocks: 15
+- Logger: 3
+- Existing Swagger: 5
+- Uploads API: 14
+- Uploads Swagger: 3
 
-The mock Service also coordinates how generated entities relate to each other and converts persistence failures into controlled application errors.
+Run with a local MongoDB instance and the isolated `.env.test` configuration:
 
-The ****Repository layer**** answers:
+```bash
+npm test
+```
 
-\> How should the application read or write this data?
+**Important:** The test setup clears collections in `shipnow_test` between tests. Never point it at a database containing valuable records.
 
-For example, it performs Mongoose queries, applies database filters and projections, sorts results, persists updates, and performs bulk insertion of generated test records.
-
-This separation keeps business rules independent from the database implementation and makes the codebase easier to maintain, test, and extend.
+Before committing or submitting, verify that `.env`, `.env.test`, `node_modules/`, `logs/`, and `uploads/` are excluded from Git, and check `git status --short`. The remaining audit findings should be reviewed before any production deployment.

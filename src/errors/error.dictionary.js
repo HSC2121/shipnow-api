@@ -83,4 +83,47 @@ export const ERROR_DICTIONARY = Object.freeze({
     statusCode: 404,
     message: "Route not found",
   },
+
+  FILE_REQUIRED: {
+    errorCode: "FILE_REQUIRED",
+    statusCode: 400,
+    message: "A file is required",
+  },
+
+  INVALID_FILE_TYPE: {
+    errorCode: "INVALID_FILE_TYPE",
+    statusCode: 400,
+    message: "Invalid file type",
+  },
+
+  FILE_TOO_LARGE: {
+    errorCode: "FILE_TOO_LARGE",
+    statusCode: 413,
+    message: "File exceeds the 5 MB limit",
+  },
+
+  INVALID_FILE_FIELD: {
+    errorCode: "INVALID_FILE_FIELD",
+    statusCode: 400,
+    message: "Unexpected file field",
+  },
+
+  INVALID_DOCUMENT_TYPE: {
+    errorCode: "INVALID_DOCUMENT_TYPE",
+    statusCode: 400,
+    message: "Invalid document type",
+  },
+
+  DRIVER_NOT_FOUND: {
+    errorCode: "DRIVER_NOT_FOUND",
+    statusCode: 404,
+    message: "Driver not found",
+  },
+
+  FILE_SAVE_FAILED: {
+    errorCode: "FILE_SAVE_FAILED",
+    statusCode: 500,
+    message: "Failed to save uploaded file",
+  },
+
 });

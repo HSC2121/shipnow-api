@@ -21,3 +21,6 @@ logs/
 # Test coverage
 coverage/
 .nyc_output/
+
+# Uploaded files
+uploads/

@@ -1,0 +1,330 @@
+
+tags:
+  - name: Uploads
+    description: User documents, delivery proofs, and driver licenses
+
+paths:
+  /api/users/{id}/documents:
+    post:
+      tags:
+        - Uploads
+      summary: Upload a user document
+      description: >
+        Upload a PDF, JPEG, or PNG file (maximum 5 MB).
+        The file is stored locally and its metadata is
+        associated with an existing user.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Existing user MongoDB ObjectId
+          schema:
+            type: string
+          example: "507f1f77bcf86cd799439011"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - document
+                - documentType
+              properties:
+                document:
+                  type: string
+                  format: binary
+                  description: PDF, JPEG, or PNG (max 5 MB)
+                documentType:
+                  type: string
+                  enum: [identity, passport, address]
+                  description: Type of identity document
+                  example: identity
+      responses:
+        "201":
+          description: User document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserUploadResponse"
+        "400":
+          $ref: "#/components/responses/UploadBadRequest"
+        "404":
+          $ref: "#/components/responses/UploadNotFound"
+        "413":
+          $ref: "#/components/responses/UploadTooLarge"
+        "500":
+          $ref: "#/components/responses/UploadServerError"
+
+  /api/orders/{id}/proof:
+    post:
+      tags:
+        - Uploads
+      summary: Upload delivery proof
+      description: >
+        Upload a delivery proof as PDF, JPEG, or PNG
+        (maximum 5 MB). The file metadata is added
+        to the existing order's deliveryProofs array.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Existing order MongoDB ObjectId
+          schema:
+            type: string
+          example: "507f1f77bcf86cd799439012"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - proof
+              properties:
+                proof:
+                  type: string
+                  format: binary
+                  description: PDF, JPEG, or PNG (max 5 MB)
+      responses:
+        "201":
+          description: Delivery proof uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderUploadResponse"
+        "400":
+          $ref: "#/components/responses/UploadBadRequest"
+        "404":
+          $ref: "#/components/responses/UploadNotFound"
+        "413":
+          $ref: "#/components/responses/UploadTooLarge"
+        "500":
+          $ref: "#/components/responses/UploadServerError"
+
+  /api/drivers/{id}/license:
+    post:
+      tags:
+        - Uploads
+      summary: Upload a driver license
+      description: >
+        Upload a driving license as PDF, JPEG, or PNG
+        (maximum 5 MB). The license metadata is
+        associated with an existing driver.
+        Uploading another license replaces the previous one.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Existing driver MongoDB ObjectId
+          schema:
+            type: string
+          example: "507f1f77bcf86cd799439013"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - license
+              properties:
+                license:
+                  type: string
+                  format: binary
+                  description: PDF, JPEG, or PNG (max 5 MB)
+      responses:
+        "201":
+          description: Driver license uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverUploadResponse"
+        "400":
+          $ref: "#/components/responses/UploadBadRequest"
+        "404":
+          $ref: "#/components/responses/UploadNotFound"
+        "413":
+          $ref: "#/components/responses/UploadTooLarge"
+        "500":
+          $ref: "#/components/responses/UploadServerError"
+
+components:
+  schemas:
+    FileMetadata:
+      type: object
+      description: File metadata stored in MongoDB, not file contents
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439014"
+        originalName:
+          type: string
+          example: "identity.pdf"
+        filename:
+          type: string
+          example: "1794433275894-6c274b77-86a6-4c6f-928d-f53951fc8ad8.pdf"
+        path:
+          type: string
+          example: "uploads/documents/1794433275894-file.pdf"
+        mimeType:
+          type: string
+          enum: [application/pdf, image/jpeg, image/png]
+        size:
+          type: integer
+          description: File size in bytes
+          example: 102400
+        documentType:
+          type: string
+          enum:
+            - identity
+            - passport
+            - address
+            - delivery_proof
+            - driver_license
+        uploadedAt:
+          type: string
+          format: date-time
+
+    UserUploadResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: User document uploaded successfully
+        data:
+          allOf:
+            - $ref: "#/components/schemas/User"
+            - type: object
+              properties:
+                documents:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FileMetadata"
+
+    OrderUploadResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Delivery proof uploaded successfully
+        data:
+          allOf:
+            - $ref: "#/components/schemas/Order"
+            - type: object
+              properties:
+                deliveryProofs:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FileMetadata"
+
+    DriverUploadResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Driver license uploaded successfully
+        data:
+          allOf:
+            - $ref: "#/components/schemas/Driver"
+            - type: object
+              properties:
+                license:
+                  $ref: "#/components/schemas/FileMetadata"
+
+    UploadError:
+      type: object
+      required: [status, errorCode, statusCode, message]
+      properties:
+        status:
+          type: string
+          example: error
+        errorCode:
+          type: string
+          example: INVALID_FILE_TYPE
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Invalid file type
+
+  responses:
+    UploadBadRequest:
+      description: >
+        Missing file, invalid file type, invalid document
+        type, invalid ID, or unexpected upload field.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UploadError"
+          examples:
+            missingFile:
+              value:
+                status: error
+                errorCode: FILE_REQUIRED
+                statusCode: 400
+                message: A file is required
+            invalidDocumentType:
+              value:
+                status: error
+                errorCode: INVALID_DOCUMENT_TYPE
+                statusCode: 400
+                message: Invalid document type
+            invalidFileType:
+              value:
+                status: error
+                errorCode: INVALID_FILE_TYPE
+                statusCode: 400
+                message: Invalid file type
+            unexpectedField:
+              value:
+                status: error
+                errorCode: INVALID_FILE_FIELD
+                statusCode: 400
+                message: Unexpected file field
+
+    UploadNotFound:
+      description: User, order, or driver not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UploadError"
+          example:
+            status: error
+            errorCode: ORDER_NOT_FOUND
+            statusCode: 404
+            message: Order not found
+
+    UploadTooLarge:
+      description: File exceeds the 5 MB size limit
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UploadError"
+          example:
+            status: error
+            errorCode: FILE_TOO_LARGE
+            statusCode: 413
+            message: File exceeds the 5 MB limit
+
+    UploadServerError:
+      description: File storage or metadata persistence failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UploadError"
+          example:
+            status: error
+            errorCode: FILE_SAVE_FAILED
+            statusCode: 500
+            message: Failed to save uploaded file

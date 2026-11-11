@@ -1,5 +1,7 @@
+
 import mongoose from "mongoose";
 import { USER_ROLES } from "../constants/index.js";
+import { fileMetadataSchema } from "./file-metadata.schema.js";
 
 const driverSchema = new mongoose.Schema(
   {
@@ -38,6 +40,11 @@ const driverSchema = new mongoose.Schema(
     available: {
       type: Boolean,
       default: true
+    },
+
+    license: {
+      type: fileMetadataSchema,
+      default: undefined
     }
   },
   {

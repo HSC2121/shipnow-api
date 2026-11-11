@@ -1,4 +1,3 @@
-
 import request from "supertest";
 import { expect } from "chai";
 import app from "../src/app.js";
@@ -23,47 +22,31 @@ describe("Swagger API Documentation", () => {
     expect(swaggerSpecs.paths).to.have.property("/api/users");
     expect(swaggerSpecs.paths).to.have.property("/api/orders");
     expect(swaggerSpecs.paths).to.have.property("/api/orders/{id}");
-    expect(swaggerSpecs.paths).to.have.property(
-      "/api/orders/{id}/status"
-    );
+    expect(swaggerSpecs.paths).to.have.property("/api/orders/{id}/status");
 
-    expect(swaggerSpecs.paths["/api/orders"]).to.have.property(
-      "get"
+    expect(swaggerSpecs.paths["/api/orders"]).to.have.property("get");
+    expect(swaggerSpecs.paths["/api/orders"]).to.have.property("post");
+    expect(swaggerSpecs.paths["/api/orders/{id}"]).to.have.property("get");
+    expect(swaggerSpecs.paths["/api/orders/{id}/status"]).to.have.property(
+      "patch",
     );
-    expect(swaggerSpecs.paths["/api/orders"]).to.have.property(
-      "post"
-    );
-    expect(swaggerSpecs.paths["/api/orders/{id}"]).to.have.property(
-      "get"
-    );
-    expect(
-      swaggerSpecs.paths["/api/orders/{id}/status"]
-    ).to.have.property("patch");
   });
 
   it("should define reusable schemas", () => {
-    expect(swaggerSpecs.components.schemas).to.have.property(
-      "User"
-    );
-    expect(swaggerSpecs.components.schemas).to.have.property(
-      "Order"
-    );
-    expect(swaggerSpecs.components.schemas).to.have.property(
-      "ErrorResponse"
-    );
+    expect(swaggerSpecs.components.schemas).to.have.property("User");
+    expect(swaggerSpecs.components.schemas).to.have.property("Order");
+    expect(swaggerSpecs.components.schemas).to.have.property("ErrorResponse");
   });
 
   it("should document standardized Orders error responses", () => {
     const responses =
-      swaggerSpecs.paths["/api/orders/{id}/status"].patch
-        .responses;
+      swaggerSpecs.paths["/api/orders/{id}/status"].patch.responses;
 
     for (const statusCode of ["400", "404", "409"]) {
       expect(responses).to.have.property(statusCode);
 
       expect(
-        responses[statusCode].content["application/json"].schema
-          .$ref
+        responses[statusCode].content["application/json"].schema.$ref,
       ).to.equal("#/components/schemas/ErrorResponse");
     }
   });
