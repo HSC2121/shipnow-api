@@ -2,6 +2,7 @@
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpecs } from "./docs/swagger.config.js";
+import { config } from "./config/env.config.js";
 
 import productsRouter from "./routes/products.routes.js";
 import usersRouter from "./routes/users.routes.js";
@@ -16,25 +17,50 @@ import { ERROR_DICTIONARY } from "./errors/error.dictionary.js";
 
 const app = express();
 
-app.use(express.json());
+app.disable("x-powered-by");
+app.use(express.json({ limit: "100kb" }));
 
-// API routes
+// Public process health check (no sensitive information)
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    environment: config.nodeEnv,
+    uptime: Number(process.uptime().toFixed(2)),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Main API routes
 app.use("/api/products", productsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/orders", ordersRouter);
 app.use("/api/drivers", driversRouter);
-app.use("/api/mocks", mocksRouter);
-app.use("/api/logger", loggerRouter);
 
-// Swagger API documentation
-app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+// Mock endpoints are available only in development and testing.
+// They are not registered in production.
+if (config.nodeEnv !== "production") {
+  app.use("/api/mocks", mocksRouter);
+}
 
-// Handle nonexistent routes (404)
+// Logger test endpoint is development-only.
+if (config.nodeEnv === "development") {
+  app.use("/api/logger", loggerRouter);
+}
+
+// Swagger remains available in all environments for
+// educational deployment and Docker verification.
+app.use(
+  "/api/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpecs)
+);
+
+// Unrecognized routes return a standardized 404 response.
 app.use((req, res, next) => {
   next(new AppError(ERROR_DICTIONARY.ROUTE_NOT_FOUND));
 });
 
-// Global error middleware
+// Centralized error handling
 app.use(errorHandler);
 
 export default app;

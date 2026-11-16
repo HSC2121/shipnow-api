@@ -1,13 +1,12 @@
-
 paths:
   /api/products:
     get:
       tags:
-        - Products
-      summary: Get all products
-      description: Retrieve all products registered in ShipNow.
+      - Products
+      summary: Get paginated products
+      description: 'Retrieve paginated products. Defaults: page=1, limit=10; maximum limit=100.'
       responses:
-        "200":
+        '200':
           description: Products retrieved successfully.
           content:
             application/json:
@@ -20,21 +19,80 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Product"
-        "500":
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    type: object
+                    required:
+                    - page
+                    - limit
+                    - total
+                    - totalPages
+                    - hasNextPage
+                    - hasPreviousPage
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      limit:
+                        type: integer
+                        example: 10
+                      total:
+                        type: integer
+                        example: 25
+                      totalPages:
+                        type: integer
+                        example: 3
+                      hasNextPage:
+                        type: boolean
+                        example: true
+                      hasPreviousPage:
+                        type: boolean
+                        example: false
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid page or limit (INVALID_PAGINATION).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                errorCode: INVALID_PAGINATION
+                statusCode: 400
+                message: Pagination parameters must be positive integers and limit cannot exceed 100
+      parameters:
+      - in: query
+        name: page
+        required: false
+        description: Page number, starting at 1.
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        example: 1
+      - in: query
+        name: limit
+        required: false
+        description: Items per page (maximum 100).
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+        example: 10
     post:
       tags:
-        - Products
+      - Products
       summary: Create a product
-      description: >
-        Create a new product. The product status is automatically
-        determined by its stock quantity.
+      description: 'Create a new product. The product status is automatically determined by its stock
+        quantity.
+
+        '
       requestBody:
         required: true
         content:
@@ -42,9 +100,9 @@ paths:
             schema:
               type: object
               required:
-                - name
-                - price
-                - stock
+              - name
+              - price
+              - stock
               properties:
                 name:
                   type: string
@@ -62,7 +120,7 @@ paths:
                   minimum: 0
                   example: 25
       responses:
-        "201":
+        '201':
           description: Product created successfully.
           content:
             application/json:
@@ -73,13 +131,13 @@ paths:
                     type: string
                     example: success
                   data:
-                    $ref: "#/components/schemas/Product"
-        "400":
+                    $ref: '#/components/schemas/Product'
+        '400':
           description: Invalid price or stock quantity.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 invalidPrice:
                   summary: Negative price
@@ -95,21 +153,20 @@ paths:
                     errorCode: INVALID_STOCK
                     statusCode: 400
                     message: Stock cannot be negative
-        "500":
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
   /api/products/available:
     get:
       tags:
-        - Products
+      - Products
       summary: Get available products
-      description: Retrieve products with available status.
+      description: 'Retrieve paginated available products. Defaults: page=1, limit=10; maximum limit=100.'
       responses:
-        "200":
+        '200':
           description: Available products retrieved successfully.
           content:
             application/json:
@@ -122,30 +179,88 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Product"
-        "500":
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    type: object
+                    required:
+                    - page
+                    - limit
+                    - total
+                    - totalPages
+                    - hasNextPage
+                    - hasPreviousPage
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      limit:
+                        type: integer
+                        example: 10
+                      total:
+                        type: integer
+                        example: 25
+                      totalPages:
+                        type: integer
+                        example: 3
+                      hasNextPage:
+                        type: boolean
+                        example: true
+                      hasPreviousPage:
+                        type: boolean
+                        example: false
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid page or limit (INVALID_PAGINATION).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                errorCode: INVALID_PAGINATION
+                statusCode: 400
+                message: Pagination parameters must be positive integers and limit cannot exceed 100
+      parameters:
+      - in: query
+        name: page
+        required: false
+        description: Page number, starting at 1.
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        example: 1
+      - in: query
+        name: limit
+        required: false
+        description: Items per page (maximum 100).
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+        example: 10
   /api/products/{id}:
     get:
       tags:
-        - Products
+      - Products
       summary: Get product by ID
       description: Retrieve a product using its MongoDB document ID.
       parameters:
-        - in: path
-          name: id
-          required: true
-          description: MongoDB product identifier.
-          schema:
-            type: string
-          example: "507f1f77bcf86cd799439012"
+      - in: path
+        name: id
+        required: true
+        description: MongoDB product identifier.
+        schema:
+          type: string
+        example: 507f1f77bcf86cd799439012
       responses:
-        "200":
+        '200':
           description: Product retrieved successfully.
           content:
             application/json:
@@ -156,51 +271,51 @@ paths:
                     type: string
                     example: success
                   data:
-                    $ref: "#/components/schemas/Product"
-        "400":
+                    $ref: '#/components/schemas/Product'
+        '400':
           description: Invalid MongoDB identifier.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: INVALID_ID
                 statusCode: 400
                 message: Invalid resource ID
-        "404":
+        '404':
           description: Product not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: PRODUCT_NOT_FOUND
                 statusCode: 404
                 message: Product not found
-        "500":
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       tags:
-        - Products
+      - Products
       summary: Update a product
-      description: >
-        Update an existing product. When stock is updated,
-        the product status is automatically recalculated.
+      description: 'Update an existing product. When stock is updated, the product status is automatically
+        recalculated.
+
+        '
       parameters:
-        - in: path
-          name: id
-          required: true
-          description: MongoDB product identifier.
-          schema:
-            type: string
-          example: "507f1f77bcf86cd799439012"
+      - in: path
+        name: id
+        required: true
+        description: MongoDB product identifier.
+        schema:
+          type: string
+        example: 507f1f77bcf86cd799439012
       requestBody:
         required: true
         content:
@@ -225,12 +340,15 @@ paths:
                   example: 15
                 status:
                   type: string
-                  enum: [available, out_of_stock]
-                  description: >
-                    Can be updated directly, but is recalculated
-                    automatically when stock is provided.
+                  enum:
+                  - available
+                  - out_of_stock
+                  description: 'Can be updated directly, but is recalculated automatically when stock
+                    is provided.
+
+                    '
       responses:
-        "200":
+        '200':
           description: Product updated successfully.
           content:
             application/json:
@@ -241,13 +359,13 @@ paths:
                     type: string
                     example: success
                   data:
-                    $ref: "#/components/schemas/Product"
-        "400":
+                    $ref: '#/components/schemas/Product'
+        '400':
           description: Invalid ID, price, or stock quantity.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 invalidId:
                   summary: Invalid product ID
@@ -270,20 +388,20 @@ paths:
                     errorCode: INVALID_STOCK
                     statusCode: 400
                     message: Stock cannot be negative
-        "404":
+        '404':
           description: Product not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: PRODUCT_NOT_FOUND
                 statusCode: 404
                 message: Product not found
-        "500":
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'

@@ -3,25 +3,37 @@ import { ProductModel } from "../models/product.model.js";
 import { PRODUCT_STATUS } from "../constants/index.js";
 
 export class ProductsRepository {
-  async getAll() {
-    return await ProductModel.find(
-      {},
-      {
-        __v: 0,
-      }
-    ).sort({ createdAt: -1 });
+  async getAll({ limit, skip }) {
+    const [products, total] = await Promise.all([
+      ProductModel.find({}, { __v: 0 })
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      ProductModel.countDocuments(),
+    ]);
+
+    return { products, total };
   }
 
-  async getAvailable() {
-    return await ProductModel.find(
-      {
-        status: PRODUCT_STATUS.AVAILABLE,
-        stock: { $gt: 0 },
-      },
-      {
-        __v: 0,
-      }
-    ).sort({ createdAt: -1 });
+  async getAvailable({ limit, skip }) {
+    const filter = {
+      status: PRODUCT_STATUS.AVAILABLE,
+      stock: { $gt: 0 },
+    };
+
+    const [products, total] = await Promise.all([
+      ProductModel.find(filter, { __v: 0 })
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      ProductModel.countDocuments(filter),
+    ]);
+
+    return { products, total };
   }
 
   async findById(id) {

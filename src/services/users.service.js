@@ -3,13 +3,31 @@ import mongoose from "mongoose";
 import { UsersRepository } from "../repositories/users.repository.js";
 import { AppError } from "../errors/app.error.js";
 import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
+import { getPagination } from "../utils/pagination.js";
 import logger from "../config/logger.config.js";
 
 const usersRepository = new UsersRepository();
 
 export class UsersService {
-  async getUsers() {
-    return await usersRepository.getAll();
+  async getUsers(query = {}) {
+    const { page, limit, skip } = getPagination(query);
+
+    const { users, total } = await usersRepository.getAll({
+      limit,
+      skip,
+    });
+
+    return {
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 
   async getUserById(id) {

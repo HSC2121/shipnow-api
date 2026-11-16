@@ -5,6 +5,25 @@ import mongoose from "mongoose";
 import app from "../src/app.js";
 
 describe("Users API", () => {
+  const createMultipleUsers = async (count) => {
+    const users = [];
+
+    for (let i = 0; i < count; i++) {
+      const res = await request(app)
+        .post("/api/users")
+        .send({
+          firstName: `Test${i}`,
+          lastName: "User",
+          email: `pagination.user.${i}@example.com`,
+        });
+
+      expect(res.status).to.equal(201);
+      users.push(res.body.data);
+    }
+
+    return users;
+  };
+
   describe("GET /api/users", () => {
     it("should return 200 and a list of users", async () => {
       const res = await request(app).get("/api/users");
@@ -13,6 +32,114 @@ describe("Users API", () => {
       expect(res.body).to.be.an("object");
       expect(res.body.status).to.equal("success");
       expect(res.body.data).to.be.an("array");
+    });
+
+    it("should use default pagination values", async () => {
+      const res = await request(app).get("/api/users");
+
+      expect(res.status).to.equal(200);
+      expect(res.body.pagination).to.deep.equal({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      });
+    });
+
+    it("should return the requested page and limit", async () => {
+      await createMultipleUsers(5);
+
+      const res = await request(app)
+        .get("/api/users?page=2&limit=2");
+
+      expect(res.status).to.equal(200);
+      expect(res.body.status).to.equal("success");
+      expect(res.body.data).to.be.an("array");
+      expect(res.body.data).to.have.lengthOf(2);
+
+      expect(res.body.pagination).to.deep.equal({
+        page: 2,
+        limit: 2,
+        total: 5,
+        totalPages: 3,
+        hasNextPage: true,
+        hasPreviousPage: true,
+      });
+    });
+
+    it("should return an empty array for a page beyond the total", async () => {
+      await createMultipleUsers(2);
+
+      const res = await request(app)
+        .get("/api/users?page=5&limit=2");
+
+      expect(res.status).to.equal(200);
+      expect(res.body.data).to.be.an("array").that.is.empty;
+
+      expect(res.body.pagination.total).to.equal(2);
+      expect(res.body.pagination.totalPages).to.equal(1);
+      expect(res.body.pagination.hasNextPage).to.equal(false);
+    });
+
+    it("should reject invalid pagination parameters", async () => {
+      const invalidQueries = [
+        "?page=0",
+        "?page=-1",
+        "?page=abc",
+        "?page=1.5",
+        "?limit=0",
+        "?limit=-5",
+        "?limit=101",
+        "?limit=abc",
+      ];
+
+      for (const query of invalidQueries) {
+        const res = await request(app)
+          .get(`/api/users${query}`);
+
+        expect(res.status).to.equal(400);
+        expect(res.body.status).to.equal("error");
+        expect(res.body.errorCode).to.equal(
+          "INVALID_PAGINATION"
+        );
+        expect(res.body.statusCode).to.equal(400);
+        expect(res.body.message).to.equal(
+          "Pagination parameters must be positive integers and limit cannot exceed 100"
+        );
+      }
+    });
+
+    it("should not return duplicate users across pages", async () => {
+      await createMultipleUsers(4);
+
+      const firstPage = await request(app)
+        .get("/api/users?page=1&limit=2");
+
+      const secondPage = await request(app)
+        .get("/api/users?page=2&limit=2");
+
+      expect(firstPage.status).to.equal(200);
+      expect(secondPage.status).to.equal(200);
+
+      const firstIds = firstPage.body.data.map(
+        (user) => user._id
+      );
+
+      const secondIds = secondPage.body.data.map(
+        (user) => user._id
+      );
+
+      expect(firstIds).to.have.lengthOf(2);
+      expect(secondIds).to.have.lengthOf(2);
+
+      const uniqueIds = new Set([
+        ...firstIds,
+        ...secondIds,
+      ]);
+
+      expect(uniqueIds.size).to.equal(4);
     });
   });
 

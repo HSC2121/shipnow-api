@@ -1,6 +1,6 @@
 # ShipNow API
 
-ShipNow API is a backend REST API designed for a logistics company to manage users, products, orders, drivers, deliveries, and test data.
+ShipNow API is a Node.js REST API for managing users, products, orders, driver license records, delivery-related documents, and test data.
 
 The project follows a layered architecture that separates HTTP handling, business logic, database access, data models, and centralized error handling. This structure improves maintainability, testability, consistency, and scalability as the application grows.
 
@@ -32,6 +32,7 @@ The project follows a layered architecture that separates HTTP handling, busines
 - Supertest
 - Multer
 - file-type
+- Docker / Docker Desktop
 
 ## Architecture
 
@@ -98,6 +99,8 @@ Encapsulate database access.
 Repositories are responsible for querying and modifying data through Mongoose, including filters, projections, sorting, and persistence operations.
 
 The mocks repository also provides bulk insertion of generated test records using `insertMany()`.
+
+List queries use bounded MongoDB pagination (default page 1, limit 10, maximum limit 100), deterministic descending sort, and document counts for pagination metadata.
 
 Keeping database access inside repositories prevents the business layer from depending directly on MongoDB operations.
 
@@ -237,27 +240,33 @@ src/
 
 ```
 
+Additional project files include `Dockerfile`, `.dockerignore`, `.env.example`, `.env.test.example`, `tests/`, `package.json`, and `README.md`. The shared pagination helper lives in `src/utils/pagination.js`.
+
 ## Environment Configuration
 
-Environment variables are loaded and validated through a centralized configuration layer.
+ShipNow loads and validates environment variables at startup using `src/config/env.config.js` and `dotenv`. The application fails fast for missing or invalid critical settings. Never commit `.env` or `.env.test`.
 
-Required variables:
+| Variable | Required | Description |
+| --- | --- | --- |
+| `PORT` | Yes | Integer from 1 to 65535; default example `8080` |
+| `MONGODB_URI` | Yes | `mongodb://` or `mongodb+srv://` connection URI |
+| `NODE_ENV` | Yes | `development`, `test`, or `production` |
+| `LOG_LEVEL` | No | `fatal`, `error`, `warning`, `info`, `http`, `debug`; defaults to `info` in production and `debug` otherwise |
+| `EXTERNAL_SERVICE_URL` | No | Optional HTTP/HTTPS URL (configured for future integrations; no outbound integration is implied) |
+
+Create `.env` from `.env.example` for development and `.env.test` from `.env.test.example` for automated tests. Test mode loads `.env.test`; other modes load `.env` if present. Values explicitly passed by the environment or Docker `-e` take precedence over file values.
+
+Local example:
 
 ```env
-
-PORT=
-
-MONGODB_URI=
-
-NODE_ENV=
-
+NODE_ENV=development
+PORT=8080
+MONGODB_URI=mongodb://127.0.0.1:27017/shipnow
+LOG_LEVEL=debug
+EXTERNAL_SERVICE_URL=
 ```
 
-If a required environment variable is missing, the application stops during startup with a descriptive error.
-
-The `.env` and `.env.test` files should be excluded from version control.
-
-Use `.env.example` as a template for local configuration.
+The Docker image deliberately does **not** copy local environment files. Supply variables at runtime using `--env-file` and overrides; do not bake credentials into the image. JWT authentication is not implemented in this project, so there is no JWT secret to configure.
 
 ## Installation
 
@@ -313,16 +322,16 @@ Swagger UI lets you inspect HTTP methods, paths, parameters, JSON request bodies
 
 ### Documented Modules
 
-| Module | Coverage |
-| --- | --- |
-| Users | List, retrieve by ID, create, and update users |
-| Products | List, list available, retrieve by ID, create, and update products |
-| Orders | List, create, retrieve by ID, and update order status |
-| Mocks | Generate mock users, drivers, orders, and deliveries; seed the database |
-| Logger | Development-only logging validation (`GET /api/logger/test`) |
-| Uploads | User documents, order delivery proofs, driver licenses |
+| Module   | Coverage                                                                |
+| -------- | ----------------------------------------------------------------------- |
+| Users    | List, retrieve by ID, create, and update users                          |
+| Products | List, list available, retrieve by ID, create, and update products       |
+| Orders   | List, create, retrieve by ID, and update order status                   |
+| Mocks    | Generate mock users, drivers, orders, and deliveries; seed the database |
+| Logger   | Development-only logging validation (`GET /api/logger/test`)            |
+| Uploads  | User documents, order delivery proofs, driver licenses                  |
 
-Order endpoints operate on persisted orders. Mock generation endpoints return simulated data and are separate from the Orders API. Deliveries have a data model and mock-generation endpoint; dedicated delivery CRUD routes are not implemented.
+Order endpoints operate on persisted orders. Mock generation endpoints return simulated data and are separate from the Orders API. Deliveries have a data model and mock-generation endpoint; dedicated delivery CRUD routes are not implemented. List endpoints for Users, Orders, Products, and Available Products document `page` and `limit` query parameters.
 
 ### Reusable Schemas
 
@@ -338,7 +347,7 @@ The documented errors include invalid resource IDs, missing resources, duplicate
 
 3\. Select **Try it out**, enter any required values, then select **Execute**.
 
-4\. For a read-only test, use `GET /api/mocks/users?qty=2`; try `qty=0` to verify the documented HTTP `400` error.
+4\. In development only, for a read-only test use `GET /api/mocks/users?qty=2`; try `qty=0` to verify HTTP `400`. This endpoint is disabled in production.
 
 5\. `POST /api/mocks/seed` **writes records to MongoDB**; only execute it when you intend to create test data.
 
@@ -352,7 +361,7 @@ Changes to YAML documentation may require restarting the server before they appe
 
 ```http
 
-GET /api/products
+GET /api/products?page=1&limit=10
 
 ```
 
@@ -360,7 +369,7 @@ GET /api/products
 
 ```http
 
-GET /api/products/available
+GET /api/products/available?page=1&limit=10
 
 ```
 
@@ -385,9 +394,7 @@ POST /api/products
 Example body:
 
 ```json
-
 {
-
   "name": "Wireless Headphones",
 
   "description": "Noise-cancelling Bluetooth headphones",
@@ -395,9 +402,7 @@ Example body:
   "price": 120,
 
   "stock": 15
-
 }
-
 ```
 
 Product status is determined automatically from stock.
@@ -413,13 +418,9 @@ PUT /api/products/:id
 Example body:
 
 ```json
-
 {
-
   "stock": 0
-
 }
-
 ```
 
 Setting stock to `0` automatically changes the product status to `out_of_stock`.
@@ -430,7 +431,7 @@ Setting stock to `0` automatically changes the product status to `out_of_stock`.
 
 ```http
 
-GET /api/users
+GET /api/users?page=1&limit=10
 
 ```
 
@@ -453,17 +454,13 @@ POST /api/users
 Example body:
 
 ```json
-
 {
-
   "firstName": "John",
 
   "lastName": "Doe",
 
   "email": "john.doe@example.com"
-
 }
-
 ```
 
 New users receive the `user` role by default.
@@ -481,15 +478,11 @@ PUT /api/users/:id
 Example body:
 
 ```json
-
 {
-
   "firstName": "Johnny",
 
   "email": "johnny.doe@example.com"
-
 }
-
 ```
 
 Duplicate email addresses are rejected with HTTP `409 Conflict`.
@@ -515,7 +508,7 @@ Example request body (replace the user ID with an existing user's MongoDB `_id`)
 ```json
 {
   "user": "000000000000000000000001",
-  "total": 125.50,
+  "total": 125.5,
   "deliveryAddress": "123 Main Street",
   "priority": "normal"
 }
@@ -636,13 +629,10 @@ Deliveries reference generated orders and drivers.
 Example response:
 
 ```json
-
 {
-
   "status": "success",
 
   "inserted": {
-
     "users": 10,
 
     "drivers": 10,
@@ -650,11 +640,8 @@ Example response:
     "orders": 10,
 
     "deliveries": 10
-
   }
-
 }
-
 ```
 
 Unlike the mock `GET` endpoints, the seed endpoint persists the generated records in MongoDB.
@@ -782,9 +769,7 @@ qty=101
 return HTTP `400 Bad Request` using the centralized error format:
 
 ```json
-
 {
-
   "status": "error",
 
   "errorCode": "INVALID_MOCK_QUANTITY",
@@ -792,9 +777,7 @@ return HTTP `400 Bad Request` using the centralized error format:
   "statusCode": 400,
 
   "message": "Quantity must be an integer between 1 and 100"
-
 }
-
 ```
 
 ## Centralized Error Handling
@@ -806,21 +789,17 @@ Business and validation errors are represented by the custom `AppError` class.
 Instead of creating isolated errors such as:
 
 ```js
-
 const error = new Error("Product not found");
 
 error.statusCode = 404;
 
 throw error;
-
 ```
 
 Services use the centralized error dictionary:
 
 ```js
-
 throw new AppError(ERROR_DICTIONARY.PRODUCT_NOT_FOUND);
-
 ```
 
 The error dictionary defines the public error code, HTTP status code, and message in one place.
@@ -830,9 +809,7 @@ The global error middleware is registered after the application routes and is re
 The standard error structure is:
 
 ```json
-
 {
-
   "status": "error",
 
   "errorCode": "PRODUCT_NOT_FOUND",
@@ -840,17 +817,13 @@ The standard error structure is:
   "statusCode": 404,
 
   "message": "Product not found"
-
 }
-
 ```
 
 Unexpected errors are not exposed directly to clients. They return a generic response:
 
 ```json
-
 {
-
   "status": "error",
 
   "errorCode": "INTERNAL_SERVER_ERROR",
@@ -858,9 +831,7 @@ Unexpected errors are not exposed directly to clients. They return a generic res
   "statusCode": 500,
 
   "message": "Internal server error"
-
 }
-
 ```
 
 Technical error information remains available in server-side Winston logs for debugging.
@@ -911,9 +882,7 @@ GET /api/products/abc
 returns:
 
 ```json
-
 {
-
   "status": "error",
 
   "errorCode": "INVALID_ID",
@@ -921,9 +890,7 @@ returns:
   "statusCode": 400,
 
   "message": "Invalid resource ID"
-
 }
-
 ```
 
 A correctly formatted MongoDB ObjectId that does not reference an existing resource instead returns the corresponding `404` domain error.
@@ -939,9 +906,7 @@ GET /api/products/000000000000000000000000
 Response:
 
 ```json
-
 {
-
   "status": "error",
 
   "errorCode": "PRODUCT_NOT_FOUND",
@@ -949,9 +914,7 @@ Response:
   "statusCode": 404,
 
   "message": "Product not found"
-
 }
-
 ```
 
 ## Automated Functional Testing
@@ -981,22 +944,11 @@ The `npm test` script sets `NODE_ENV=test` and runs all `tests/**/*.test.js` fil
 
 ### Test suite
 
-| Suite | Tests | Main checks |
-| --- | ---: | --- |
-| Users | 7 | List, creation, validation, duplicate email, invalid/missing IDs, unknown route |
-| Orders | 12 | List, create, retrieve, status update, validation, missing resources, invalid transitions |
-| Mocks | 15 | Generated data structures, default/custom quantities, invalid quantities, database seeding |
-| Logger | 3 | Test environment isolation and development-only endpoint restriction |
-| Swagger | 5 | Swagger UI, OpenAPI version, paths, reusable schemas, documented error responses |
-| Uploads API | 14 | File uploads, validation, cleanup, license replacement |
-| Uploads Swagger | 3 | Multipart upload schemas and documented responses |
-| **Total** | **59** | **All passing in the latest local run** |
+The latest verified full local run on November 16, 2026 completed **81 passing tests**. These cover users, orders, products, mock data, logger-route restrictions, Swagger/OpenAPI, file uploads and their documentation, and health checks. Pagination tests check defaults, explicit page/limit values, out-of-range pages, validation, and stable traversal without duplicate records.
 
-Tests assert HTTP status codes, success response shapes, selected data types, and standardized error payloads. Seeded mock data is stored only in the isolated test database during automated tests.
+The suite tests behavior rather than reporting a measured line/branch coverage percentage. The logger diagnostic endpoint is not registered in the test or production environment. The mock endpoints are available for testing but absent in production.
 
-The logger diagnostic endpoint is intentionally unavailable under `NODE_ENV=test` and returns HTTP `404`. To manually exercise all six log levels, start the application in development mode and request `GET /api/logger/test`.
-
-The suite covers the endpoints listed above; it is **not a measured line/branch coverage percentage**, and product endpoints are not yet included in this automated test suite.
+**Important:** `tests/setup.js` verifies the test database name and deletes documents in `shipnow_test` before each test. Never use a database containing valuable records for the test suite.
 
 ## Testing Error Cases
 
@@ -1004,7 +956,7 @@ The centralized error layer can be tested with the following requests.
 
 ### Invalid mock quantity
 
-```http
+````http
 
 GET /api/mocks/users?qty=0
 
@@ -1032,7 +984,7 @@ All three endpoints accept `multipart/form-data` and return **201 Created** afte
 curl -X POST http://localhost:8080/api/users/USER_ID/documents \
   -F "documentType=identity" \
   -F "document=@./identity.pdf"
-```
+````
 
 `documentType` must be one of `identity`, `passport`, or `address`. Each successful upload appends another document entry to the user.
 
@@ -1056,18 +1008,18 @@ Each driver has one active license. A successful replacement updates the stored 
 
 ### Storage and validation
 
-| Property | Behavior |
-| --- | --- |
-| File storage | Local disk |
-| User document directory | `uploads/documents/` |
-| Order proof directory | `uploads/proofs/` |
-| Driver license directory | `uploads/licenses/` |
-| Allowed MIME types | `application/pdf`, `image/jpeg`, `image/png` |
-| Maximum size | 5 MB (`5 * 1024 * 1024` bytes) |
-| Generated filename | Timestamp + random UUID + extension |
-| Content validation | `file-type` checks the file's detected MIME type against the declared MIME type |
-| Rejected uploads | Newly stored file is deleted |
-| Source control | `uploads/` must be ignored |
+| Property                 | Behavior                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| File storage             | Local disk                                                                      |
+| User document directory  | `uploads/documents/`                                                            |
+| Order proof directory    | `uploads/proofs/`                                                               |
+| Driver license directory | `uploads/licenses/`                                                             |
+| Allowed MIME types       | `application/pdf`, `image/jpeg`, `image/png`                                    |
+| Maximum size             | 5 MB (`5 * 1024 * 1024` bytes)                                                  |
+| Generated filename       | Timestamp + random UUID + extension                                             |
+| Content validation       | `file-type` checks the file's detected MIME type against the declared MIME type |
+| Rejected uploads         | Newly stored file is deleted                                                    |
+| Source control           | `uploads/` must be ignored                                                      |
 
 Multer's initial MIME filter rejects unsupported declarations. The service then checks actual file contents, so a renamed or disguised file cannot pass solely by claiming to be a PDF or image. An uploaded file with an invalid resource ID, invalid document type, missing target entity, or failed persistence is also cleaned up.
 
@@ -1077,15 +1029,15 @@ Multer's initial MIME filter rejects unsupported declarations. The service then 
 
 The reusable subdocument schema `src/models/file-metadata.schema.js` contains:
 
-| Field | Purpose |
-| --- | --- |
-| `originalName` | Original client filename |
-| `filename` | Generated disk filename |
-| `path` | File path relative to the application working directory |
-| `mimeType` | Uploaded MIME type, verified against detected content |
-| `size` | Size in bytes |
+| Field          | Purpose                                                                  |
+| -------------- | ------------------------------------------------------------------------ |
+| `originalName` | Original client filename                                                 |
+| `filename`     | Generated disk filename                                                  |
+| `path`         | File path relative to the application working directory                  |
+| `mimeType`     | Uploaded MIME type, verified against detected content                    |
+| `size`         | Size in bytes                                                            |
 | `documentType` | `identity`, `passport`, `address`, `delivery_proof`, or `driver_license` |
-| `uploadedAt` | Upload timestamp |
+| `uploadedAt`   | Upload timestamp                                                         |
 
 User and order metadata is stored in arrays; a driver's active license is stored as one subdocument.
 
@@ -1109,18 +1061,18 @@ On failure, the service removes the newly uploaded file and passes a standardize
 
 ### Upload error codes
 
-| HTTP status | Error code | Meaning |
-| --- | --- | --- |
-| 400 | `FILE_REQUIRED` | No file was provided |
-| 400 | `INVALID_FILE_TYPE` | Unsupported, disguised, or invalid file |
-| 400 | `INVALID_FILE_FIELD` | Unexpected multipart file field or file count |
-| 400 | `INVALID_DOCUMENT_TYPE` | Invalid user document category |
-| 400 | `INVALID_ID` | Invalid MongoDB ObjectId |
-| 404 | `USER_NOT_FOUND` | User does not exist |
-| 404 | `ORDER_NOT_FOUND` | Order does not exist |
-| 404 | `DRIVER_NOT_FOUND` | Driver does not exist |
-| 413 | `FILE_TOO_LARGE` | File exceeds 5 MB |
-| 500 | `FILE_SAVE_FAILED` | Upload processing or metadata persistence failed |
+| HTTP status | Error code              | Meaning                                          |
+| ----------- | ----------------------- | ------------------------------------------------ |
+| 400         | `FILE_REQUIRED`         | No file was provided                             |
+| 400         | `INVALID_FILE_TYPE`     | Unsupported, disguised, or invalid file          |
+| 400         | `INVALID_FILE_FIELD`    | Unexpected multipart file field or file count    |
+| 400         | `INVALID_DOCUMENT_TYPE` | Invalid user document category                   |
+| 400         | `INVALID_ID`            | Invalid MongoDB ObjectId                         |
+| 404         | `USER_NOT_FOUND`        | User does not exist                              |
+| 404         | `ORDER_NOT_FOUND`       | Order does not exist                             |
+| 404         | `DRIVER_NOT_FOUND`      | Driver does not exist                            |
+| 413         | `FILE_TOO_LARGE`        | File exceeds 5 MB                                |
+| 500         | `FILE_SAVE_FAILED`      | Upload processing or metadata persistence failed |
 
 ### Swagger and tests for uploads
 
@@ -1143,42 +1095,127 @@ Compatible updates were then applied using `npm audit fix`, followed by a full t
 
 These findings are **not resolved**. Further updates require reviewing the advisory details, dependency compatibility, and regression tests. Avoid `npm audit fix --force` without assessing breaking changes.
 
-## Course Progress and Scope
+## Module 8 — Performance, Scalability, and Docker
 
-The Coderhouse Backend III reading material covers the following modules. The table distinguishes **implemented ShipNow work** from future coursework; it does not claim that every exercise in the reading material has been implemented.
+### Pagination and input limits
+
+The list endpoints `GET /api/users`, `GET /api/orders`, `GET /api/products`, and `GET /api/products/available` accept `page` and `limit` query parameters. They default to page 1 and 10 results per page, with a hard maximum limit of 100. Invalid or non-positive values return HTTP `400` with `INVALID_PAGINATION`. MongoDB queries use `skip`, `limit`, deterministic descending sorting, and `countDocuments` rather than loading all records into memory.
+
+Example:
+
+```bash
+curl 'http://localhost:8080/api/users?page=2&limit=5'
+```
+
+List responses include the `data` array and a `pagination` object with `page`, `limit`, `total`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. Available-products filtering additionally requires `status=available` and `stock > 0`.
+
+Express limits JSON request bodies to `100kb`. Multer handles multipart files separately: one PDF, PNG, or JPEG per upload, up to 5 MB, with type and file-signature validation, unexpected-field rejection, and failed-upload cleanup. There are no dedicated delivery CRUD/list endpoints to paginate; delivery mocks are limited to 100 generated records per call in non-production environments.
+
+### Health check
+
+`GET /health` returns HTTP `200` and a minimal JSON document with `status`, `environment`, process `uptime` in seconds, and an ISO 8601 `timestamp`:
+
+```json
+{
+  "status": "OK",
+  "environment": "production",
+  "uptime": 104.02,
+  "timestamp": "2026-11-16T23:18:24.467Z"
+}
+```
+
+The endpoint reports **process health**, not database readiness. A healthy HTTP response alone does not prove MongoDB is continuously reachable. The startup log separately confirms initial database connectivity.
+
+### Environment-dependent routes and logging
+
+| Route | Development | Test | Production |
+| --- | --- | --- | --- |
+| `/health` | Enabled | Enabled | Enabled |
+| Main API and Swagger `/api/docs/` | Enabled | Enabled | Enabled |
+| `/api/mocks/*` | Enabled | Enabled | **404 — not mounted** |
+| `/api/logger/test` | Enabled | **404 — not mounted** | **404 — not mounted** |
+
+Swagger remains accessible in production for coursework and Docker verification, not as a general recommendation for public production systems. Production logs are written as structured JSON to stdout/stderr for inspection with `docker logs`; development also uses rotating local error logs.
+
+### Docker image
+
+`Dockerfile` uses `node:22-bookworm-slim`, `npm ci --omit=dev`, a dedicated non-root `node` user, and an HTTP `HEALTHCHECK` targeting `/health`. `.dockerignore` excludes local secrets, dependencies, logs, generated uploads, tests, coverage, and Git metadata. The image copies only the runtime source and package manifests; changes to source or Swagger require rebuilding it.
+
+Prerequisites: Docker Desktop with its engine running and a reachable MongoDB server. Build the image from the repository root:
+
+```bash
+docker build -t shipnow-api:1.0 .
+```
+
+For MongoDB running on the **Mac host** at port 27017 without authentication, start a production container:
+
+```bash
+docker run -d \
+  --name shipnow-api \
+  -p 8080:8080 \
+  --env-file .env \
+  -e NODE_ENV=production \
+  -e PORT=8080 \
+  -e LOG_LEVEL=info \
+  -e MONGODB_URI=mongodb://host.docker.internal:27017/shipnow \
+  -v shipnow-uploads:/app/uploads \
+  shipnow-api:1.0
+```
+
+`host.docker.internal` is Docker Desktop's hostname for services on the host; using `127.0.0.1` inside the container would target the container itself. If using a remote or authenticated MongoDB instance, **replace** the example URI with the appropriate value rather than overriding it. The `.env` file must exist locally when using `--env-file .env`, but it is not copied into the image.
+
+The named Docker volume `shipnow-uploads` stores uploaded documents, delivery proofs, and licenses across container replacements. The `node` user must have write access to `/app/uploads`. Docker logs are inspected using `docker logs`, and the example does not mount a persistent log directory in production.
+
+Inspect container status and endpoints:
+
+```bash
+docker ps
+docker logs shipnow-api
+curl -i http://localhost:8080/health
+curl -i 'http://localhost:8080/api/orders?page=1&limit=10'
+curl -o /dev/null -s -w '%{http_code}\n' http://localhost:8080/api/docs/
+curl -o /dev/null -s -w '%{http_code}\n' http://localhost:8080/api/mocks/users
+curl -o /dev/null -s -w '%{http_code}\n' http://localhost:8080/api/logger/test
+```
+
+Expected statuses: `200` for health, orders, and Swagger; `404` for production-only disabled mocks and logger test. Docker Desktop's container should report `(healthy)` after the health-check startup period.
+
+To replace an existing container with a rebuilt image:
+
+```bash
+docker build -t shipnow-api:1.0 .
+docker stop shipnow-api
+docker rm shipnow-api
+# Repeat the docker run command above.
+```
+
+The named volume persists through this replacement unless explicitly deleted. Stop an existing container before starting another on host port 8080. The project does not embed MongoDB inside the Docker image, so the database must be provided separately.
+
+### Verification and outstanding production considerations
+
+As of November 16, 2026, **81 automated tests pass** on the local test database. The Docker image successfully built; the production container started, connected to the host MongoDB, returned a healthy process response, served paginated users/orders/products, served Swagger (HTTP 200), and correctly returned HTTP 404 for `/api/mocks/users` and `/api/logger/test`.
+
+This is a course project, **not a claim of production security certification**. Authentication/authorization, dedicated delivery CRUD endpoints, continuous database readiness checks, deployment orchestration, and a final dependency vulnerability remediation review are not implemented. Do not expose this API directly to the internet with real personal data without these protections.
+
+## Course Progress and Scope
 
 | Course module | Subject | ShipNow status |
 | --- | --- | --- |
-| 1 | Professional layered architecture, environment configuration, constants | Implemented |
+| 1 | Layered architecture and environment configuration | Implemented |
 | 2 | Mocking and database seeding | Implemented |
-| 3 | Centralized errors and error middleware | Implemented |
-| 4 | Winston logging and rotating logs | Implemented |
-| 5 | OpenAPI / Swagger documentation | Implemented |
-| 6 | Functional testing with Mocha, Chai, and Supertest | Implemented |
-| 7 | Multer file uploads, validation, metadata persistence | Implemented and tested |
-| 8 | Performance, scalability, and Docker | Not yet implemented in this documented version |
-| 9 | Final production-ready API consolidation | Not yet completed |
+| 3 | Centralized errors | Implemented |
+| 4 | Winston logging | Implemented |
+| 5 | Swagger/OpenAPI | Implemented |
+| 6 | Mocha, Chai, and Supertest | Implemented |
+| 7 | Multer uploads and file validation | Implemented and tested |
+| 8 | Performance, pagination, health check, Docker | Implemented and tested locally |
+| 9 | Final production-ready consolidation | Not claimed complete |
 
-The course also discusses authentication exercises, Docker deployment, production hardening, and additional checks. These should not be mistaken for implemented features. In particular, the current API does not claim completed authentication/authorization, dedicated delivery CRUD endpoints, a health-check endpoint, or a Docker setup.
+## Final Submission Checklist
 
-### Current verification and next steps
-
-The latest confirmed local test suite contains **59 passing tests**:
-
-- Users: 7
-- Orders: 12
-- Mocks: 15
-- Logger: 3
-- Existing Swagger: 5
-- Uploads API: 14
-- Uploads Swagger: 3
-
-Run with a local MongoDB instance and the isolated `.env.test` configuration:
-
-```bash
-npm test
-```
-
-**Important:** The test setup clears collections in `shipnow_test` between tests. Never point it at a database containing valuable records.
-
-Before committing or submitting, verify that `.env`, `.env.test`, `node_modules/`, `logs/`, and `uploads/` are excluded from Git, and check `git status --short`. The remaining audit findings should be reviewed before any production deployment.
+- Run `npm test` against the isolated test database and verify all 81 tests pass.
+- Check Docker health, MongoDB startup logs, Swagger, main endpoints, and production-only 404 routes.
+- Check `.env`, `.env.test`, `node_modules`, `logs`, and `uploads` are ignored by Git.
+- Review `git status --short` and `git diff --stat` before staging files.
+- Commit project source, Swagger, tests, Docker build files, examples, and this README; never commit secrets or runtime uploads.
+- Push the intended branch to GitHub and confirm the remote reflects the final version.

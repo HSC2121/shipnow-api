@@ -35,6 +35,26 @@ describe("Orders API", () => {
     return res.body.data;
   };
 
+  const createMultipleOrders = async (count) => {
+    const userId = await createTestUser();
+    const orders = [];
+
+    for (let i = 0; i < count; i++) {
+      const res = await request(app)
+        .post("/api/orders")
+        .send({
+          user: userId,
+          total: 100 + i,
+          deliveryAddress: `${i + 1} Test Street`,
+        });
+
+      expect(res.status).to.equal(201);
+      orders.push(res.body.data);
+    }
+
+    return orders;
+  };
+
   const expectError = (res, statusCode, errorCode, message) => {
     expect(res.status).to.equal(statusCode);
     expect(res.body).to.be.an("object");
@@ -52,6 +72,110 @@ describe("Orders API", () => {
       expect(res.status).to.equal(200);
       expect(res.body.status).to.equal("success");
       expect(res.body.data).to.be.an("array");
+    });
+
+    it("should use default pagination values", async () => {
+      const res = await request(app).get("/api/orders");
+
+      expect(res.status).to.equal(200);
+      expect(res.body.pagination).to.deep.equal({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      });
+    });
+
+    it("should return the requested page and limit", async () => {
+      await createMultipleOrders(5);
+
+      const res = await request(app)
+        .get("/api/orders?page=2&limit=2");
+
+      expect(res.status).to.equal(200);
+      expect(res.body.status).to.equal("success");
+      expect(res.body.data).to.be.an("array");
+      expect(res.body.data).to.have.lengthOf(2);
+
+      expect(res.body.pagination).to.deep.equal({
+        page: 2,
+        limit: 2,
+        total: 5,
+        totalPages: 3,
+        hasNextPage: true,
+        hasPreviousPage: true,
+      });
+    });
+
+    it("should return an empty array for a page beyond the total", async () => {
+      await createMultipleOrders(2);
+
+      const res = await request(app)
+        .get("/api/orders?page=5&limit=2");
+
+      expect(res.status).to.equal(200);
+      expect(res.body.data).to.be.an("array").that.is.empty;
+      expect(res.body.pagination.total).to.equal(2);
+      expect(res.body.pagination.totalPages).to.equal(1);
+      expect(res.body.pagination.hasNextPage).to.equal(false);
+    });
+
+    it("should reject invalid pagination parameters", async () => {
+      const invalidQueries = [
+        "?page=0",
+        "?page=-1",
+        "?page=abc",
+        "?page=1.5",
+        "?limit=0",
+        "?limit=-5",
+        "?limit=101",
+        "?limit=abc",
+      ];
+
+      for (const query of invalidQueries) {
+        const res = await request(app)
+          .get(`/api/orders${query}`);
+
+        expectError(
+          res,
+          400,
+          "INVALID_PAGINATION",
+          "Pagination parameters must be positive integers and limit cannot exceed 100"
+        );
+      }
+    });
+
+    it("should not return duplicate orders across pages", async () => {
+      await createMultipleOrders(4);
+
+      const firstPage = await request(app)
+        .get("/api/orders?page=1&limit=2");
+
+      const secondPage = await request(app)
+        .get("/api/orders?page=2&limit=2");
+
+      expect(firstPage.status).to.equal(200);
+      expect(secondPage.status).to.equal(200);
+
+      const firstIds = firstPage.body.data.map(
+        (order) => order._id
+      );
+
+      const secondIds = secondPage.body.data.map(
+        (order) => order._id
+      );
+
+      expect(firstIds).to.have.lengthOf(2);
+      expect(secondIds).to.have.lengthOf(2);
+
+      const uniqueIds = new Set([
+        ...firstIds,
+        ...secondIds,
+      ]);
+
+      expect(uniqueIds.size).to.equal(4);
     });
   });
 

@@ -1,3 +1,4 @@
+
 import { ProductsService } from "../services/products.service.js";
 
 const productsService = new ProductsService();
@@ -5,11 +6,13 @@ const productsService = new ProductsService();
 export class ProductsController {
   async getProducts(req, res, next) {
     try {
-      const products = await productsService.getProducts();
+      const { products, pagination } =
+        await productsService.getProducts(req.query);
 
       res.status(200).json({
         status: "success",
-        data: products
+        data: products,
+        pagination,
       });
     } catch (error) {
       next(error);
@@ -18,12 +21,13 @@ export class ProductsController {
 
   async getAvailableProducts(req, res, next) {
     try {
-      const products =
-        await productsService.getAvailableProducts();
+      const { products, pagination } =
+        await productsService.getAvailableProducts(req.query);
 
       res.status(200).json({
         status: "success",
-        data: products
+        data: products,
+        pagination,
       });
     } catch (error) {
       next(error);
@@ -37,7 +41,7 @@ export class ProductsController {
 
       res.status(200).json({
         status: "success",
-        data: product
+        data: product,
       });
     } catch (error) {
       next(error);
@@ -51,7 +55,7 @@ export class ProductsController {
 
       res.status(201).json({
         status: "success",
-        data: product
+        data: product,
       });
     } catch (error) {
       next(error);
@@ -68,7 +72,7 @@ export class ProductsController {
 
       res.status(200).json({
         status: "success",
-        data: product
+        data: product,
       });
     } catch (error) {
       next(error);

@@ -1,3 +1,4 @@
+
 import winston from "winston";
 import "winston-daily-rotate-file";
 import { config } from "./env.config.js";
@@ -35,32 +36,41 @@ const consoleFormat = winston.format.combine(
   winston.format.timestamp({
     format: "YYYY-MM-DD HH:mm:ss",
   }),
-  winston.format.printf(({ timestamp, level, message, ...metadata }) => {
-    const details = Object.keys(metadata).length
-      ? ` ${JSON.stringify(metadata)}`
-      : "";
+  winston.format.printf(
+    ({ timestamp, level, message, ...metadata }) => {
+      const details = Object.keys(metadata).length
+        ? ` ${JSON.stringify(metadata)}`
+        : "";
 
-    return `${timestamp} [${level}] ${message}${details}`;
-  })
+      return `${timestamp} [${level}] ${message}${details}`;
+    }
+  )
 );
 
-const logger = winston.createLogger({
-  levels,
-  level: isProduction ? "info" : "debug",
-  format: logFormat,
-  transports: [
-    new winston.transports.Console({
-      format: consoleFormat,
-    }),
+const transports = [
+  new winston.transports.Console({
+    format: isProduction ? logFormat : consoleFormat,
+  }),
+];
 
+if (!isProduction) {
+  transports.push(
     new winston.transports.DailyRotateFile({
       filename: "logs/error-%DATE%.log",
       datePattern: "YYYY-MM-DD",
       maxSize: "10m",
       maxFiles: "14d",
       level: "error",
-    }),
-  ],
+    })
+  );
+}
+
+const logger = winston.createLogger({
+  levels,
+  level: config.logLevel,
+  format: logFormat,
+  transports,
+  exitOnError: false,
 });
 
 export default logger;

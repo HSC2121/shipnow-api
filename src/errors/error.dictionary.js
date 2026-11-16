@@ -126,4 +126,11 @@ export const ERROR_DICTIONARY = Object.freeze({
     message: "Failed to save uploaded file",
   },
 
+  INVALID_PAGINATION: {
+    errorCode: "INVALID_PAGINATION",
+    statusCode: 400,
+    message: "Pagination parameters must be positive integers and limit cannot exceed 100",
+  },
+
+
 });

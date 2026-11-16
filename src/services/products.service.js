@@ -4,17 +4,50 @@ import { ProductsRepository } from "../repositories/products.repository.js";
 import { PRODUCT_STATUS } from "../constants/index.js";
 import { AppError } from "../errors/app.error.js";
 import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
+import { getPagination } from "../utils/pagination.js";
 import logger from "../config/logger.config.js";
 
 const productsRepository = new ProductsRepository();
 
 export class ProductsService {
-  async getProducts() {
-    return await productsRepository.getAll();
+  buildPagination(page, limit, total) {
+    return {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page * limit < total,
+      hasPreviousPage: page > 1,
+    };
   }
 
-  async getAvailableProducts() {
-    return await productsRepository.getAvailable();
+  async getProducts(query = {}) {
+    const { page, limit, skip } = getPagination(query);
+
+    const { products, total } = await productsRepository.getAll({
+      limit,
+      skip,
+    });
+
+    return {
+      products,
+      pagination: this.buildPagination(page, limit, total),
+    };
+  }
+
+  async getAvailableProducts(query = {}) {
+    const { page, limit, skip } = getPagination(query);
+
+    const { products, total } =
+      await productsRepository.getAvailable({
+        limit,
+        skip,
+      });
+
+    return {
+      products,
+      pagination: this.buildPagination(page, limit, total),
+    };
   }
 
   async getProductById(id) {

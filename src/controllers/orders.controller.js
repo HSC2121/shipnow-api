@@ -6,11 +6,14 @@ const ordersService = new OrdersService();
 export class OrdersController {
   async getOrders(req, res, next) {
     try {
-      const orders = await ordersService.getOrders();
+      const { orders, pagination } = await ordersService.getOrders(
+        req.query
+      );
 
       res.status(200).json({
         status: "success",
         data: orders,
+        pagination,
       });
     } catch (error) {
       next(error);

@@ -1,13 +1,12 @@
-
 paths:
   /api/users:
     get:
       tags:
-        - Users
-      summary: Get all users
-      description: Retrieve all registered ShipNow users.
+      - Users
+      summary: Get paginated users
+      description: 'Retrieve paginated users. Defaults: page=1, limit=10; maximum limit=100.'
       responses:
-        "200":
+        '200':
           description: Users retrieved successfully.
           content:
             application/json:
@@ -20,19 +19,78 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: "#/components/schemas/User"
-        "500":
+                      $ref: '#/components/schemas/User'
+                  pagination:
+                    type: object
+                    required:
+                    - page
+                    - limit
+                    - total
+                    - totalPages
+                    - hasNextPage
+                    - hasPreviousPage
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      limit:
+                        type: integer
+                        example: 10
+                      total:
+                        type: integer
+                        example: 25
+                      totalPages:
+                        type: integer
+                        example: 3
+                      hasNextPage:
+                        type: boolean
+                        example: true
+                      hasPreviousPage:
+                        type: boolean
+                        example: false
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid page or limit (INVALID_PAGINATION).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                errorCode: INVALID_PAGINATION
+                statusCode: 400
+                message: Pagination parameters must be positive integers and limit cannot exceed 100
+      parameters:
+      - in: query
+        name: page
+        required: false
+        description: Page number, starting at 1.
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        example: 1
+      - in: query
+        name: limit
+        required: false
+        description: Items per page (maximum 100).
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+        example: 10
     post:
       tags:
-        - Users
+      - Users
       summary: Create a user
-      description: Create a new user with a unique email address. First name, last name, and email are required.
+      description: Create a new user with a unique email address. First name, last name, and email are
+        required.
       requestBody:
         required: true
         content:
@@ -40,9 +98,9 @@ paths:
             schema:
               type: object
               required:
-                - firstName
-                - lastName
-                - email
+              - firstName
+              - lastName
+              - email
               properties:
                 firstName:
                   type: string
@@ -59,10 +117,13 @@ paths:
                   example: john@example.com
                 role:
                   type: string
-                  enum: [admin, user, driver]
+                  enum:
+                  - admin
+                  - user
+                  - driver
                   default: user
       responses:
-        "201":
+        '201':
           description: User created successfully.
           content:
             application/json:
@@ -73,55 +134,51 @@ paths:
                     type: string
                     example: success
                   data:
-                    $ref: "#/components/schemas/User"
-
-        "400":
+                    $ref: '#/components/schemas/User'
+        '400':
           description: Missing, empty, or incorrectly typed required user fields.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: INVALID_USER_DATA
                 statusCode: 400
                 message: First name, last name, and email are required
-
-        "409":
+        '409':
           description: Email address already registered.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: EMAIL_ALREADY_REGISTERED
                 statusCode: 409
                 message: Email already registered
-
-        "500":
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
   /api/users/{id}:
     get:
       tags:
-        - Users
+      - Users
       summary: Get user by ID
       description: Retrieve a registered user using a MongoDB document ID.
       parameters:
-        - in: path
-          name: id
-          required: true
-          description: MongoDB user identifier.
-          schema:
-            type: string
-          example: "507f1f77bcf86cd799439011"
+      - in: path
+        name: id
+        required: true
+        description: MongoDB user identifier.
+        schema:
+          type: string
+        example: 507f1f77bcf86cd799439011
       responses:
-        "200":
+        '200':
           description: User retrieved successfully.
           content:
             application/json:
@@ -132,52 +189,48 @@ paths:
                     type: string
                     example: success
                   data:
-                    $ref: "#/components/schemas/User"
-
-        "400":
+                    $ref: '#/components/schemas/User'
+        '400':
           description: Invalid MongoDB identifier.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: INVALID_ID
                 statusCode: 400
                 message: Invalid resource ID
-
-        "404":
+        '404':
           description: User not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: USER_NOT_FOUND
                 statusCode: 404
                 message: User not found
-
-        "500":
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       tags:
-        - Users
+      - Users
       summary: Update a user
       description: Update an existing user's information.
       parameters:
-        - in: path
-          name: id
-          required: true
-          description: MongoDB user identifier.
-          schema:
-            type: string
-          example: "507f1f77bcf86cd799439011"
+      - in: path
+        name: id
+        required: true
+        description: MongoDB user identifier.
+        schema:
+          type: string
+        example: 507f1f77bcf86cd799439011
       requestBody:
         required: true
         content:
@@ -197,10 +250,13 @@ paths:
                   example: jane@example.com
                 role:
                   type: string
-                  enum: [admin, user, driver]
+                  enum:
+                  - admin
+                  - user
+                  - driver
                   example: user
       responses:
-        "200":
+        '200':
           description: User updated successfully.
           content:
             application/json:
@@ -211,47 +267,43 @@ paths:
                     type: string
                     example: success
                   data:
-                    $ref: "#/components/schemas/User"
-
-        "400":
+                    $ref: '#/components/schemas/User'
+        '400':
           description: Invalid MongoDB identifier.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: INVALID_ID
                 statusCode: 400
                 message: Invalid resource ID
-
-        "404":
+        '404':
           description: User not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: USER_NOT_FOUND
                 statusCode: 404
                 message: User not found
-
-        "409":
+        '409':
           description: Email address already registered.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
               example:
                 status: error
                 errorCode: EMAIL_ALREADY_REGISTERED
                 statusCode: 409
                 message: Email already registered
-
-        "500":
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'

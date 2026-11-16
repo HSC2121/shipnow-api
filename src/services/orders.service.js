@@ -5,6 +5,7 @@ import { UsersRepository } from "../repositories/users.repository.js";
 import { AppError } from "../errors/app.error.js";
 import { ERROR_DICTIONARY } from "../errors/error.dictionary.js";
 import { ORDER_STATUS, ORDER_PRIORITY } from "../constants/index.js";
+import { getPagination } from "../utils/pagination.js";
 import logger from "../config/logger.config.js";
 
 const ordersRepository = new OrdersRepository();
@@ -28,8 +29,25 @@ const ALLOWED_TRANSITIONS = {
 };
 
 export class OrdersService {
-  async getOrders() {
-    return await ordersRepository.getAll();
+  async getOrders(query = {}) {
+    const { page, limit, skip } = getPagination(query);
+
+    const { orders, total } = await ordersRepository.getAll({
+      limit,
+      skip,
+    });
+
+    return {
+      orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 
   async getOrderById(id) {

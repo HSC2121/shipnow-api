@@ -2,8 +2,18 @@
 import { OrderModel } from "../models/order.model.js";
 
 export class OrdersRepository {
-  async getAll() {
-    return await OrderModel.find();
+  async getAll({ limit, skip }) {
+    const [orders, total] = await Promise.all([
+      OrderModel.find()
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      OrderModel.countDocuments(),
+    ]);
+
+    return { orders, total };
   }
 
   async findById(id) {

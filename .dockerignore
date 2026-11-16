@@ -1,0 +1,47 @@
+
+# Dependencies
+node_modules/
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# Git
+.git/
+.gitignore
+
+# Generated logs
+logs/
+*.log
+
+# Uploads
+uploads/
+
+# Test files and coverage
+tests/
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.swp
+*.bak
+
+# Development tooling
+.vscode/
+.idea/
+
+# macOS files
+.DS_Store
+__MACOSX/
+
+# Documentation not required by the runtime
+README.md
+
+# Docker build files
+Dockerfile
+.dockerignore
