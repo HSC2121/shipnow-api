@@ -20,7 +20,7 @@ Built with **Node.js, Express, MongoDB, and Mongoose**, ShipNow follows a layere
 - Structured logging with Winston
 - Interactive Swagger/OpenAPI documentation
 - Automated integration and concurrency testing
-- Application health monitoring
+- Application and database health monitoring
 - Multi-stage Docker build and Docker Compose deployment
 
 ## Technology Stack
@@ -128,7 +128,7 @@ Alternatively, Docker Desktop can run the application and MongoDB together witho
 Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/HSC2121/shipnow-api.git
 cd shipnow-api
 ```
 
@@ -206,7 +206,7 @@ http://localhost:8080
 | Deliveries | PATCH | `/api/deliveries/:id/driver` | Assign driver |
 | Deliveries | PATCH | `/api/deliveries/:id/status` | Update delivery status |
 | Deliveries | GET | `/api/deliveries/:id/tracking` | Get tracking history |
-| Health | GET | `/health` | Application health check |
+| Health | GET | `/health` | Application and database health check |
 
 Interactive documentation, including request schemas and supported error responses, is available through Swagger:
 
@@ -784,9 +784,11 @@ Example:
 }
 ```
 
-The endpoint reports application process health.
+The endpoint checks application health and MongoDB connectivity using a database ping.
 
-MongoDB availability is also checked through the database connection lifecycle and Docker Compose health configuration.
+It returns HTTP `200` when healthy or HTTP `503` when the database is unavailable.
+
+Docker Compose additionally monitors MongoDB through its own health check.
 
 ## Docker Deployment
 
