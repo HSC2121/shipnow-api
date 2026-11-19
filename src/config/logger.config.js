@@ -1,6 +1,5 @@
 
 import winston from "winston";
-import "winston-daily-rotate-file";
 import { config } from "./env.config.js";
 
 const levels = {
@@ -21,18 +20,14 @@ winston.addColors({
   debug: "gray",
 });
 
-const isProduction = config.nodeEnv === "production";
-
-const logFormat = winston.format.combine(
-  winston.format.timestamp({
-    format: "YYYY-MM-DD HH:mm:ss",
-  }),
+const fileFormat = winston.format.combine(
+  winston.format.timestamp(),
   winston.format.errors({ stack: true }),
   winston.format.json()
 );
 
 const consoleFormat = winston.format.combine(
-  winston.format.colorize({ all: true }),
+  winston.format.colorize({ level: true }),
   winston.format.timestamp({
     format: "YYYY-MM-DD HH:mm:ss",
   }),
@@ -48,19 +43,25 @@ const consoleFormat = winston.format.combine(
 );
 
 const transports = [
-  new winston.transports.Console({
-    format: isProduction ? logFormat : consoleFormat,
+  // Error-level and higher severity messages.
+  new winston.transports.File({
+    filename: "logs/error.log",
+    level: "error",
+    format: fileFormat,
+  }),
+
+  // All messages permitted by the configured logger level.
+  new winston.transports.File({
+    filename: "logs/combined.log",
+    format: fileFormat,
   }),
 ];
 
-if (!isProduction) {
+// Console logging is enabled only during development.
+if (config.nodeEnv === "development") {
   transports.push(
-    new winston.transports.DailyRotateFile({
-      filename: "logs/error-%DATE%.log",
-      datePattern: "YYYY-MM-DD",
-      maxSize: "10m",
-      maxFiles: "14d",
-      level: "error",
+    new winston.transports.Console({
+      format: consoleFormat,
     })
   );
 }
@@ -68,7 +69,7 @@ if (!isProduction) {
 const logger = winston.createLogger({
   levels,
   level: config.logLevel,
-  format: logFormat,
+  format: fileFormat,
   transports,
   exitOnError: false,
 });

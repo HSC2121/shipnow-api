@@ -1,0 +1,333 @@
+
+tags:
+  - name: Deliveries
+    description: Delivery management and tracking
+
+components:
+  schemas:
+    TrackingEvent:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, assigned, in_transit, delivered]
+        timestamp:
+          type: string
+          format: date-time
+        note:
+          type: string
+          maxLength: 500
+
+    Delivery:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        order:
+          type: string
+          description: Associated order ID
+        driver:
+          type: string
+          nullable: true
+          description: Assigned driver ID
+        status:
+          type: string
+          enum: [pending, assigned, in_transit, delivered]
+        estimatedDeliveryDate:
+          type: string
+          format: date-time
+        trackingHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackingEvent"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Tracking:
+      type: object
+      properties:
+        deliveryId:
+          type: string
+        orderId:
+          type: string
+        currentStatus:
+          type: string
+          enum: [pending, assigned, in_transit, delivered]
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackingEvent"
+
+    DeliveryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          $ref: "#/components/schemas/Delivery"
+
+    TrackingResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          $ref: "#/components/schemas/Tracking"
+
+  parameters:
+    DeliveryId:
+      name: id
+      in: path
+      required: true
+      description: MongoDB delivery ID
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F]{24}$"
+
+  responses:
+    DeliveryBadRequest:
+      description: Invalid ID, request data, or status (400)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    DeliveryNotFound:
+      description: Delivery, order, or driver not found (404)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    DeliveryConflict:
+      description: Duplicate delivery or invalid transition (409)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+paths:
+  /api/deliveries:
+    get:
+      tags: [Deliveries]
+      summary: List deliveries
+      description: Retrieve paginated deliveries, newest first.
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        "200":
+          description: Deliveries retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Delivery"
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      totalPages:
+                        type: integer
+                      hasNextPage:
+                        type: boolean
+                      hasPreviousPage:
+                        type: boolean
+        "400":
+          $ref: "#/components/responses/DeliveryBadRequest"
+
+    post:
+      tags: [Deliveries]
+      summary: Create a delivery
+      description: >
+        Create one delivery per existing order.
+        New deliveries start in pending status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order
+                - estimatedDeliveryDate
+              properties:
+                order:
+                  type: string
+                  example: "507f1f77bcf86cd799439011"
+                estimatedDeliveryDate:
+                  type: string
+                  format: date-time
+                  example: "2027-01-15T12:00:00.000Z"
+                driver:
+                  type: string
+                  nullable: true
+                  description: Optional existing driver ID
+                status:
+                  type: string
+                  enum: [pending]
+                  description: Optional; only pending is accepted
+      responses:
+        "201":
+          description: Delivery created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryResponse"
+        "400":
+          $ref: "#/components/responses/DeliveryBadRequest"
+        "404":
+          $ref: "#/components/responses/DeliveryNotFound"
+        "409":
+          $ref: "#/components/responses/DeliveryConflict"
+
+  /api/deliveries/{id}:
+    get:
+      tags: [Deliveries]
+      summary: Retrieve a delivery by ID
+      parameters:
+        - $ref: "#/components/parameters/DeliveryId"
+      responses:
+        "200":
+          description: Delivery retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryResponse"
+        "400":
+          $ref: "#/components/responses/DeliveryBadRequest"
+        "404":
+          $ref: "#/components/responses/DeliveryNotFound"
+
+  /api/deliveries/{id}/driver:
+    patch:
+      tags: [Deliveries]
+      summary: Assign a driver
+      description: >
+        Assign or change a driver while the delivery
+        is pending or assigned. Driver reassignment is
+        forbidden once the delivery is in transit.
+      parameters:
+        - $ref: "#/components/parameters/DeliveryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [driver]
+              properties:
+                driver:
+                  type: string
+                  example: "507f1f77bcf86cd799439012"
+      responses:
+        "200":
+          description: Driver assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryResponse"
+        "400":
+          $ref: "#/components/responses/DeliveryBadRequest"
+        "404":
+          $ref: "#/components/responses/DeliveryNotFound"
+        "409":
+          $ref: "#/components/responses/DeliveryConflict"
+
+  /api/deliveries/{id}/status:
+    patch:
+      tags: [Deliveries]
+      summary: Update delivery status
+      description: >
+        Valid transitions are pending to assigned,
+        assigned to in_transit, and in_transit to
+        delivered. A driver must exist before changing
+        from pending to assigned. Each accepted update
+        appends one tracking event.
+      parameters:
+        - $ref: "#/components/parameters/DeliveryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - pending
+                    - assigned
+                    - in_transit
+                    - delivered
+                  example: in_transit
+                note:
+                  type: string
+                  maxLength: 500
+                  default: ""
+                  example: Package dispatched
+      responses:
+        "200":
+          description: Delivery status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryResponse"
+        "400":
+          $ref: "#/components/responses/DeliveryBadRequest"
+        "404":
+          $ref: "#/components/responses/DeliveryNotFound"
+        "409":
+          $ref: "#/components/responses/DeliveryConflict"
+
+  /api/deliveries/{id}/tracking:
+    get:
+      tags: [Deliveries]
+      summary: Retrieve delivery tracking history
+      description: >
+        Return the current status and all recorded
+        tracking events for an existing delivery.
+      parameters:
+        - $ref: "#/components/parameters/DeliveryId"
+      responses:
+        "200":
+          description: Tracking history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingResponse"
+        "400":
+          $ref: "#/components/responses/DeliveryBadRequest"
+        "404":
+          $ref: "#/components/responses/DeliveryNotFound"

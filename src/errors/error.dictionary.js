@@ -132,5 +132,45 @@ export const ERROR_DICTIONARY = Object.freeze({
     message: "Pagination parameters must be positive integers and limit cannot exceed 100",
   },
 
+  DELIVERY_NOT_FOUND: {
+    errorCode: "DELIVERY_NOT_FOUND",
+    statusCode: 404,
+    message: "Delivery not found",
+  },
 
+  INVALID_DELIVERY_DATA: {
+    errorCode: "INVALID_DELIVERY_DATA",
+    statusCode: 400,
+    message: "Valid order and estimated delivery date are required",
+  },
+
+  DELIVERY_ALREADY_EXISTS: {
+    errorCode: "DELIVERY_ALREADY_EXISTS",
+    statusCode: 409,
+    message: "A delivery already exists for this order",
+  },
+
+  INVALID_DELIVERY_STATUS: {
+    errorCode: "INVALID_DELIVERY_STATUS",
+    statusCode: 400,
+    message: "Invalid delivery status",
+  },
+
+  INVALID_DELIVERY_TRANSITION: {
+    errorCode: "INVALID_DELIVERY_TRANSITION",
+    statusCode: 409,
+    message: "Invalid delivery status transition",
+  },
+
+  DRIVER_REQUIRED: {
+    errorCode: "DRIVER_REQUIRED",
+    statusCode: 400,
+    message: "A valid driver must be assigned before dispatch",
+  },
+
+  INVALID_TRACKING_NOTE: {
+    errorCode: "INVALID_TRACKING_NOTE",
+    statusCode: 400,
+    message: "Tracking note must be a string of at most 500 characters",
+  },
 });
